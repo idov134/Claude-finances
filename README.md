@@ -2,13 +2,13 @@
 
 מערכת Python מלאה שעונה לכל מניה על ארבע שאלות: **האם לקנות, כמה, מתי להיכנס ומתי לצאת**. היא בנויה סביב שכבת ולידציה שמניחה כברירת מחדל ש**אין יתרון על פני קנייה והחזקה של המדד**, עד שהוכח אחרת: מחוץ למדגם, נטו מעלויות, ואחרי תיקון לריבוי ניסיונות.
 
-> ⚠️ אין כאן הבטחת רווח. כל התוצאות בדוח הדוגמה מגיעות מ**שוק סינתטי** (הגישה לנתוני שוק חסומה בסביבת הפיתוח). הן מוכיחות שהצנרת עובדת, ולא שיש יתרון בשוק האמיתי. התוכנית, ההנחות, הסיכונים ומה שלא ניתן לאמת מתועדים ב-[`docs/PLAN.md`](docs/PLAN.md).
+> ⚠️ אין כאן הבטחת רווח. כל התוצאות בדוח הדוגמה מגיעות מ**שוק סינתטי** (הגישה לנתוני שוק חסומה בסביבת הפיתוח). הן מוכיחות שהצנרת עובדת, ולא שיש יתרון בשוק האמיתי. התוכנית, ההנחות, הסיכונים ומה שלא ניתן לאמת מתועדים ב-[`docs/PLAN.md`](docs/PLAN.md). תוצאות הרצת הדוגמה, כולל עולם ביקורת בלי אות וה-holdout, נמצאות ב-[`docs/RESULTS.md`](docs/RESULTS.md) ובדוחות ב-[`docs/sample_reports/`](docs/sample_reports/).
 
 ## התקנה
 
 ```bash
 pip install -r requirements.txt          # אופציונלי: pip install anthropic yfinance xgboost
-python -m pytest                          # 36 בדיקות, כולל בדיקות דליפת מידע
+python -m pytest                          # 39 בדיקות, כולל דליפת מידע ובדיקה מקצה לקצה
 ```
 
 ## שימוש
@@ -20,7 +20,8 @@ python -m stocksel holdout                # פותח את ה-holdout (24 חוד�
 python -m stocksel recommend [--asof DATE]   # המלצות מהקונפיגורציה הקפואה
 python -m stocksel paper submit --file reports_out/recommendations_<date>.csv --asof <date>
 python -m stocksel paper update           # מילוי פקודות בפתיחה הבאה, סטופים, עקומת הון
-python -m stocksel monitor                # השוואה שבועית מול הבקטסט + kill switch
+python -m stocksel monitor                # השוואה שבועית מול הבקטסט, drift בפיצ'רים, kill switch
+python -m stocksel review                 # סקירה רבעונית של דעיכת אותות
 ```
 
 כל הפרמטרים נמצאים בקובץ אחד: [`config.yaml`](config.yaml) (שוק, הון, drawdown נסבל, ספק נתונים, יקום, אותות, מודלים, ולידציה, עלויות, תיק, ביצוע, סיכון).

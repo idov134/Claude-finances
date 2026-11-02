@@ -168,6 +168,7 @@ portfolio:
   vol_target: null            # null => capital.max_drawdown / 2
   vol_lookback_days: 126
   min_prob: 0.5               # only hold names with haircut probability above this
+  min_position: 0.0           # live recommendations only: drop positions below this weight (0 = off)
   regime_filter:
     enabled: false
     scale: 0.5                # exposure multiplier in risk-off regime

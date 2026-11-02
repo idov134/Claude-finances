@@ -43,7 +43,8 @@ def _cfg_h(cfg: Config, h: int) -> Config:
 
 def _sections_hash(cfg: Config) -> str:
     d = cfg.to_dict()
-    sub = {k: d[k] for k in ("data", "universe", "features", "costs", "models", "validation", "news", "execution")}
+    sub = {k: d[k] for k in ("data", "universe", "features", "signals", "costs", "models", "validation", "news",
+                             "execution", "portfolio", "risk", "labels")}
     return Config(sub).hash()
 
 

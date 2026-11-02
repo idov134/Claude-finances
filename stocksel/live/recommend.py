@@ -32,8 +32,7 @@ def confidence_level(p_h: float, prob_std: float, system_validated: bool) -> str
     return "Low"
 
 
-def next_business_day(d: pd.Timestamp) -> pd.Timestamp:
-    return (pd.Timestamp(d) + pd.offsets.BDay(1)).normalize()
+from .calendar import first_trading_day_after_months, next_trading_day
 
 
 def recommend(cfg, asof: str | None = None, bundle=None, prev_weights: pd.Series | None = None,
@@ -70,11 +69,14 @@ def recommend(cfg, asof: str | None = None, bundle=None, prev_weights: pd.Series
     prm = SizingParams.from_cfg(cfg, keep, float(spec["vol_target"]))
     mv = float(market_vol(data, pd.DatetimeIndex([last])).iloc[0])
     w, diag = target_weights(cand, prev_weights if prev_weights is not None else pd.Series(dtype=float), prm, mv)
+    min_pos = float(cfg.portfolio.get("min_position", 0.0) or 0.0)
+    if min_pos > 0:  # practical floor for small accounts; the remainder stays in cash
+        w = w[w >= min_pos]
     contrib = ensemble_contributions(members, Xn)
     contrib.index = Xn.index.get_level_values(1)
     tops = top_signals(contrib.loc[w.index]) if len(w) else pd.Series(dtype=str)
-    entry = next_business_day(last)
-    exit_planned = (entry + pd.offsets.BMonthEnd(h)) + pd.offsets.BDay(1)
+    entry = next_trading_day(last)
+    exit_planned = first_trading_day_after_months(entry, h)
     atr = a["atr"].loc[last]
     close = a["close"].loc[last]
     validated = (spec.get("dsr") or 0) >= cfg.validation.red_flags.min_dsr and bool(spec.get("holdout_passed", False))
