@@ -130,7 +130,9 @@ def deflated_sharpe(r, n_trials: int, trial_sharpes_period: np.ndarray | None = 
 
 def effective_trials(returns: pd.DataFrame) -> float:
     """Effective number of independent trials from the eigenvalues of the trial correlation matrix."""
-    c = returns.dropna(axis=1, how="all").corr().fillna(0.0).to_numpy()
+    R = returns.dropna(axis=1, how="all")
+    R = R.loc[:, R.std() > 0]
+    c = R.corr().fillna(0.0).to_numpy()
     if c.size == 0:
         return 0.0
     ev = np.clip(np.linalg.eigvalsh(c), 0, None)

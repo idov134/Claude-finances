@@ -24,6 +24,7 @@ from .models.train import model_view, walk_forward
 from .portfolio.sizing import SizingParams
 from .validation import decay, sanity, sensitivity
 from .validation.cpcv import cpcv_path_predictions
+from .validation.kfold import purged_kfold_scores
 from .validation.holdout import HoldoutLock, assert_research_data, holdout_start
 from .validation.metrics import (classification_metrics, deflated_sharpe, effective_trials, performance_table,
                                  sharpe)
@@ -171,7 +172,9 @@ def run_research(cfg: Config, bundle=None, quick: bool = False) -> dict:
     san = {}
     if not quick:
         log("sanity: shuffled labels / influence / noise canary")
-        san["shuffled_labels"] = sanity.shuffled_label_test(X, L, _cfg_h(cfg, key[0]), bt_fn)
+        base_cls = S["cls"].get(cfg.models.baseline, {})
+        san["shuffled_labels"] = sanity.shuffled_label_test(X, L, _cfg_h(cfg, key[0]), bt_fn,
+                                                            true_ic=base_cls.get("ic_mean"))
     san["influence"] = sanity.influence_test(bt, float(cfg.validation.influence_drop_frac))
     san["noise_canary"] = sanity.noise_canary(X, L, cfg)
 
@@ -199,6 +202,12 @@ def run_research(cfg: Config, bundle=None, quick: bool = False) -> dict:
         cost_rows[f"x{mult:g}"] = {"excess_ann": float((b2.net - b2.bench).mean() * 12),
                                    "sharpe": sharpe(b2.net - b2.monthly["rf"])}
     sens["costs"] = pd.DataFrame(cost_rows).T
+
+    # ------------------------------------------------------------ purged k-fold diagnostics
+    kfold = None
+    if not quick:
+        log("purged + embargoed k-fold diagnostics")
+        kfold = purged_kfold_scores(X, L, cands, _cfg_h(cfg, key[0]))
 
     # ------------------------------------------------------------ CPCV
     cpcv = {}
@@ -269,7 +278,7 @@ def run_research(cfg: Config, bundle=None, quick: bool = False) -> dict:
         "n_trials": n_trials, "n_eff": n_eff, "trial_returns": R, "trial_records": reg.records("research"),
         "model_cls": {f"{k[1]}|h{k[0]}": v["cls"] for k, v in store.items()},
         "gate": {str(k.date()): v for k, v in S["decisions"].items()}, "sanity": san, "sensitivity": sens,
-        "cpcv": cpcv, "decay_table": dtab, "ic": ic, "rolling_ic": decay.rolling_ic(ic), "importance": importance,
+        "cpcv": cpcv, "kfold": kfold, "decay_table": dtab, "ic": ic, "rolling_ic": decay.rolling_ic(ic), "importance": importance,
         "news": news, "red_flags": flags, "runtime_sec": time.time() - t_start,
         "diag": pd.DataFrame(bt.diag).set_index("date") if bt.diag else None,
     }

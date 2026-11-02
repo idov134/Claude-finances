@@ -342,6 +342,14 @@ def write_report(res: dict, path: str | Path, recommendations: pd.DataFrame | No
             parts.append("<h3>Trial log (latest run of each configuration)</h3>")
             parts.append(table(df.sort_values("sharpe", ascending=False), pct_cols=("excess_ann", "max_dd", "accuracy"),
                                index=False))
+    if res.get("kfold") is not None and len(res["kfold"]):
+        parts.append("<h3>Purged + embargoed K-fold (out-of-fold skill per model, research data)</h3>")
+        parts.append(table(res["kfold"], pct_cols=("accuracy",)))
+    if res.get("model_cls"):
+        rows = {f"{k} · {m}": v for k, d in res["model_cls"].items() for m, v in d.items()}
+        parts.append("<h3>Walk-forward OOS classification per model and feature set</h3>")
+        parts.append(table(pd.DataFrame(rows).T[["accuracy", "auc", "log_loss", "brier", "ic_mean", "ic_tstat"]],
+                           pct_cols=("accuracy",)))
     if res.get("gate"):
         g = pd.DataFrame(res["gate"]).T
         parts.append("<h3>Model gate (complex models admitted only when they beat the baseline OOS, net)</h3>")
@@ -361,8 +369,8 @@ def write_report(res: dict, path: str | Path, recommendations: pd.DataFrame | No
                        "detail": ", ".join(f"{a}={_f(b)}" for a, b in v.items()
                                            if isinstance(b, (int, float)) and a not in ("passed",))}
             if k == "shuffled_labels":
-                rows[k]["detail"] = "; ".join(f"{mm}: AUC={_f(dd['auc_vs_true'])}, t(excess)={_f(dd['excess_tstat'])}"
-                                              for mm, dd in v["detail"].items())
+                rows[k]["detail"] = (f"{v['n_perm']} permutations: mean AUC={_f(v['mean_auc'])}, mean IC={_f(v['mean_ic'])}, "
+                                     f"max IC={_f(v['max_ic'])}, t(IC)={_f(v['ic_t_across_perms'])}; real IC={_f(v['true_ic'])}")
         parts.append(table(pd.DataFrame(rows).T))
 
     # robustness

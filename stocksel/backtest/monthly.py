@@ -32,27 +32,32 @@ def market_vol(bundle, dates, window: int = 126) -> pd.Series:
     return (r.rolling(window, min_periods=40).std() * np.sqrt(252)).reindex(dates).ffill().fillna(0.16)
 
 
-def candidates_at(d, preds: pd.DataFrame, panel, sectors: pd.Series) -> pd.DataFrame:
-    if d not in preds.index.get_level_values(0):
-        return pd.DataFrame()
-    c = preds.xs(d, level=0)
+def candidates_at(d, preds, panel, sectors: pd.Series) -> pd.DataFrame:
+    """``preds`` is either the long prediction frame or a {date: frame} dict (faster in loops)."""
+    if isinstance(preds, dict):
+        c = preds.get(d)
+        if c is None:
+            return pd.DataFrame()
+    else:
+        if d not in preds.index.get_level_values(0):
+            return pd.DataFrame()
+        c = preds.xs(d, level=0)
     a = panel.aux
-    out = pd.DataFrame({"prob": c["prob"], "score": c["score"]}, index=c.index)
-    out["mcap"] = a["mcap"].loc[d].reindex(out.index)
-    out["idio_vol"] = a["idio_vol"].loc[d].reindex(out.index)
-    out["beta"] = a["beta"].loc[d].reindex(out.index)
-    out["sector"] = sectors.reindex(out.index)
+    data = {"prob": c["prob"].to_numpy(), "score": c["score"].to_numpy()}
+    for k in ("mcap", "idio_vol", "beta"):
+        data[k] = a[k].loc[d].reindex(c.index).to_numpy()
+    data["sector"] = sectors.reindex(c.index).to_numpy()
     if "er" in c:
-        out["er"] = c["er"]
-    return out
+        data["er"] = c["er"].to_numpy()
+    return pd.DataFrame(data, index=c.index)
 
 
 def monthly_backtest(preds: pd.DataFrame, panel, labels, bundle, cfg, prm: SizingParams,
                      regime_filter: bool = False, cost_multiplier: float = 1.0,
                      universe_mask: pd.DataFrame | None = None) -> BacktestResult:
     cm = CostModel(cfg.costs, cost_multiplier)
-    pred_dates = set(preds.index.get_level_values(0))
-    dates = [d for d in panel.dates if d in pred_dates and np.isfinite(labels.bench.get(d, np.nan))]
+    by_date = {d: g.droplevel(0) for d, g in preds.groupby(level=0)}
+    dates = [d for d in panel.dates if d in by_date and np.isfinite(labels.bench.get(d, np.nan))]
     mv = market_vol(bundle, pd.DatetimeIndex(dates))
     rf_ann = bundle.risk_free.reindex(pd.DatetimeIndex(dates), method="ffill").fillna(0.0) if bundle.risk_free is not None \
         else pd.Series(0.0, index=dates)
@@ -63,7 +68,7 @@ def monthly_backtest(preds: pd.DataFrame, panel, labels, bundle, cfg, prm: Sizin
     w_prev = pd.Series(dtype=float)
     rows, weights, contrib, diags = [], {}, [], []
     for d in dates:
-        cands = candidates_at(d, preds, panel, bundle.sectors)
+        cands = candidates_at(d, by_date, panel, bundle.sectors)
         if universe_mask is not None and len(cands):
             cands = cands[universe_mask.loc[d].reindex(cands.index).fillna(False).to_numpy()]
         p = prm

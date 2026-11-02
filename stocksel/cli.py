@@ -75,8 +75,24 @@ def cmd_paper(cfg, args):
     print(json.dumps(led.status(), indent=2))
 
 
+def cmd_review(cfg, args):
+    """Quarterly signal-decay review on the latest data; prints signals that look dead."""
+    from .data import load_bundle
+    from .features.news import make_scorer
+    from .features.pipeline import build_features
+    from .models.labels import forward_returns, label_panel
+    from .validation.decay import decay_table, signal_ic
+    b = load_bundle(cfg, use_cache=False)
+    p = build_features(b, cfg, make_scorer(cfg))
+    L = label_panel(forward_returns(b, p.dates, 1), p.X.index)
+    tab = decay_table(signal_ic(p.X, L["excess"]), cfg, int(cfg.live.decay_review_months), float(cfg.live.dead_signal_tstat))
+    print(tab.to_string())
+    dead = list(tab.index[tab["status"] != "alive"])
+    print(f"\ncandidates for removal (add to features.disabled after review): {dead}")
+
+
 def cmd_monitor(cfg, args):
-    from .live.monitor import kill_switch_check, weekly_comparison
+    from .live.monitor import feature_drift, kill_switch_check, weekly_comparison
     from .live.paper import PaperLedger
     res = pickle.loads((Path(cfg.paths.artifacts) / "research_result.pkl").read_bytes())
     led = PaperLedger(cfg)
@@ -88,6 +104,17 @@ def cmd_monitor(cfg, args):
     print(wk.tail(12).to_string())
     dec = kill_switch_check(eq, res["monthly"]["net"], cfg)
     print(f"kill switch: {'TRIGGERED' if dec.kill else 'ok'} — {dec.reason}")
+    from .data import load_bundle
+    from .features.news import make_scorer
+    from .features.pipeline import build_features
+    b = load_bundle(cfg, use_cache=False)
+    p = build_features(b, cfg, make_scorer(cfg))
+    recent = p.dates[-3:]
+    train = p.dates[(p.dates >= p.dates[-1] - pd.DateOffset(months=123)) & (p.dates < recent[0])]
+    pick = lambda ds: {k: v.loc[ds].where(p.universe.loc[ds]) for k, v in p.raw.items()}
+    drift = feature_drift(pick(train), pick(recent), float(cfg.live.psi_alert))
+    print("\nfeature drift (training window vs last 3 months):")
+    print(drift.to_string())
     print(json.dumps(led.status(), indent=2))
 
 
@@ -103,10 +130,11 @@ def main(argv=None):
     p = sub.add_parser("paper"); p.add_argument("action", choices=["submit", "update", "status"])
     p.add_argument("--file"); p.add_argument("--asof")
     sub.add_parser("monitor")
+    sub.add_parser("review")
     args = ap.parse_args(argv)
     cfg = load_config(args.config)
     {"research": cmd_research, "holdout": cmd_holdout, "recommend": cmd_recommend, "paper": cmd_paper,
-     "monitor": cmd_monitor}[args.cmd](cfg, args)
+     "monitor": cmd_monitor, "review": cmd_review}[args.cmd](cfg, args)
 
 
 if __name__ == "__main__":
