@@ -1,0 +1,204 @@
+# =============================================================================
+# stocksel — single configuration file
+# Every number that affects results lives here. Changing anything that affects
+# results creates a new trial in the trial registry (counted in DSR / PBO).
+# =============================================================================
+
+market:
+  name: sp500                 # sp500 | russell1000 | ta125
+  benchmark: SPY              # benchmark ticker (real data); synthetic builds its own cap-weighted index
+  timezone: America/New_York
+  close_time: "16:00"         # decision time (signal generated at the close)
+
+capital:
+  initial: 100000             # USD
+  max_drawdown: 0.20          # tolerated max drawdown -> kill-switch threshold
+  currency: USD
+
+data:
+  provider: synthetic         # synthetic | sharadar | polygon | tiingo | yfinance | csv
+  start: "1998-01-01"
+  end: "2025-12-31"
+  cache_dir: artifacts/cache
+  csv_dir: data_csv           # for provider=csv (canonical format, see stocksel/data/providers/csv_provider.py)
+  membership_file: null       # optional CSV: ticker,start,end  (point-in-time index membership)
+  default_delisting_return: -0.30   # Shumway (1997) when a non-merger delisting has no return
+  pit_lag_days: 1             # fundamentals usable only if published at least this many days before the decision date
+  api_keys_env:               # names of environment variables holding API keys (never put keys in this file)
+    sharadar: NASDAQ_DATA_LINK_API_KEY
+    polygon: POLYGON_API_KEY
+    tiingo: TIINGO_API_KEY
+  synthetic:
+    seed: 7
+    n_initial: 420            # stocks alive at start
+    ipo_per_year: 22          # new listings per year
+    annual_delist_prob: 0.035 # delisting hazard (bankruptcy + M&A)
+    alpha_scale: 1.0          # 0.0 => "null world": no planted signal at all (pipeline must find nothing)
+    post_2005_decay: 0.6      # planted anomalies shrink after 2005 (mimics crowding / publication)
+    news_per_month: 1.2
+
+universe:
+  min_price: 5.0
+  min_market_cap: 2.0e+9      # USD — no micro/small caps
+  min_adv_usd: 1.0e+7         # 63-day median daily dollar volume
+  exclude_bottom_mcap_pct: 0.10   # drop the smallest 10% of the eligible universe each month
+  min_history_days: 252
+  require_index_membership: true
+
+features:
+  winsor_pct: 0.01
+  normalize: rank             # rank | zscore  (cross-sectional, per date)
+  sets:                       # feature sets are a trial dimension
+    core: [mom_12_1, mom_6_1, illiq, vol_252, idio_vol, size]
+    core_comp: [mom_12_1, mom_6_1, illiq, vol_252, idio_vol, size, rev_1m, value_bm, value_ep, quality_gpa, quality_roe, sue, pead, revisions]
+    all: [mom_12_1, mom_6_1, illiq, vol_252, idio_vol, size, rev_1m, value_bm, value_ep, quality_gpa, quality_roe, sue, pead, revisions, news_sent, regime_trend, regime_vol, regime_vix]
+  disabled: []                # signals removed by the quarterly decay review
+
+signals:                      # publication metadata -> 50% post-publication haircut
+  haircut: 0.5
+  registry:
+    mom_12_1:    {family: momentum,   published: true, year: 1993, ref: "Jegadeesh & Titman (1993)"}
+    mom_6_1:     {family: momentum,   published: true, year: 1993, ref: "Jegadeesh & Titman (1993)"}
+    rev_1m:      {family: reversal,   published: true, year: 1990, ref: "Jegadeesh (1990); Lehmann (1990)"}
+    illiq:       {family: liquidity,  published: true, year: 2002, ref: "Amihud (2002)"}
+    vol_252:     {family: volatility, published: true, year: 2006, ref: "Ang, Hodrick, Xing & Zhang (2006); Baker et al. (2011)"}
+    idio_vol:    {family: volatility, published: true, year: 2006, ref: "Ang, Hodrick, Xing & Zhang (2006)"}
+    size:        {family: control,    published: true, year: 1981, ref: "Banz (1981)"}
+    value_bm:    {family: value,      published: true, year: 1992, ref: "Fama & French (1992)"}
+    value_ep:    {family: value,      published: true, year: 1977, ref: "Basu (1977)"}
+    quality_gpa: {family: quality,    published: true, year: 2013, ref: "Novy-Marx (2013)"}
+    quality_roe: {family: quality,    published: true, year: 2015, ref: "Hou, Xue & Zhang (2015)"}
+    sue:         {family: earnings,   published: true, year: 1989, ref: "Bernard & Thomas (1989)"}
+    pead:        {family: earnings,   published: true, year: 1968, ref: "Ball & Brown (1968)"}
+    revisions:   {family: analyst,    published: true, year: 1996, ref: "Chan, Jegadeesh & Lakonishok (1996)"}
+    news_sent:   {family: text,       published: true, year: 2023, ref: "Tetlock (2007); Lopez-Lira & Tang (2023)"}
+    regime_trend: {family: regime,    published: true, year: 2007, ref: "Faber (2007)"}
+    regime_vol:  {family: regime,     published: true, year: 2017, ref: "Moreira & Muir (2017)"}
+    regime_vix:  {family: regime,     published: true, year: 2017, ref: "Moreira & Muir (2017)"}
+
+news:
+  scorer: lexicon             # lexicon | claude | precomputed
+  precomputed_file: null
+  llm:
+    model: claude-opus-5-5
+    effort: low
+    knowledge_cutoff: null    # REQUIRED for historical use. null => treated as "today": no historical evaluation allowed
+    cache_file: artifacts/cache/news_scores.jsonl
+    max_body_chars: 12000
+  lookback_days: 21           # monthly feature: sentiment over the last N days
+  rolling_sharpe_days: 252    # decay tracking of the daily news strategy
+  target_sharpe: 1.0          # weight = clip(rolling_SR / target_SR, 0, 1)
+  min_obs: 126
+  daily:
+    holding_days: 2
+    top_frac: 0.1
+    cost_multiplier: 2.0      # harsher cost model for the daily strategy
+
+labels:
+  horizon_months: 1
+  benchmark: index            # index | xs_median
+  horizons_to_test: [1, 3]
+
+models:
+  feature_set: core_comp      # pre-registered feature set of the final strategy
+  baseline: logit
+  candidates: [logit, ridge, enet, lgbm, mlp]
+  calibration: platt          # platt | isotonic
+  calibration_frac: 0.2       # last fraction of each training window used for calibration
+  seed: 11
+  n_jobs: 4
+  params:
+    logit: {C: 0.05}
+    ridge: {alpha: 50.0}
+    enet: {C: 0.05, l1_ratio: 0.5}
+    lgbm: {n_estimators: 250, learning_rate: 0.03, num_leaves: 15, max_depth: 4, min_child_samples: 300, subsample: 0.7, colsample_bytree: 0.7, reg_lambda: 10.0}
+    mlp: {hidden_layer_sizes: [32, 16], alpha: 0.01, max_iter: 40, learning_rate_init: 0.001}
+  gate:
+    min_prob_outperform: 0.80 # bootstrap P(complex - baseline > 0) on net OOS returns
+    block_size: 6
+
+validation:
+  walk_forward:
+    min_train_months: 60
+    train_window_months: 120  # rolling window (null => expanding)
+    retrain_every_months: 12
+  purged_kfold: {n_splits: 5, embargo_pct: 0.01}
+  cpcv: {n_groups: 6, n_test_groups: 2}
+  pbo: {n_blocks: 16, max_combinations: 5000}
+  holdout_months: 24          # >= 24 enforced
+  selection: preregistered    # preregistered | best_sharpe (best_sharpe is reported but discouraged)
+  bootstrap: {n: 2000, block: 6, seed: 3}
+  regimes:
+    dotcom_bust: ["2000-03-01", "2002-10-31"]
+    gfc_2008: ["2007-10-01", "2009-03-31"]
+    covid_2020: ["2020-02-01", "2020-06-30"]
+    bear_2022: ["2022-01-01", "2022-12-31"]
+  structural_break: "2005-01-01"
+  influence_drop_frac: 0.001
+  red_flags:
+    max_accuracy: 0.65
+    max_sharpe: 2.0
+    min_dsr: 0.95
+    max_pbo: 0.5
+
+trials:
+  top_n: [30, 50]
+  buffer: [true, false]
+  weighting: [capped_value]
+  regime_filter: [false]
+  feature_sets: [core, core_comp]
+  horizons: [1]
+
+costs:
+  commission_bps: 1.0
+  min_half_spread_bps: 2.0
+  spread_k: 25.0              # half-spread bps = max(min, spread_k / sqrt(ADV in $M))
+  slippage_bps: 2.0
+  impact_k: 0.5               # impact = impact_k * daily_vol * sqrt(trade / ADV)
+
+portfolio:
+  top_n: 50
+  buffer: true
+  exit_rank_mult: 1.6         # keep a holding while its rank <= top_n * exit_rank_mult
+  weighting: capped_value     # capped_value | value | equal | kelly
+  max_position: 0.05
+  max_sector: 0.30
+  max_gross: 1.0              # long-only, no leverage
+  kelly_fraction: 0.25        # hard-capped at 0.25
+  vol_target: null            # null => capital.max_drawdown / 2
+  vol_lookback_days: 126
+  min_prob: 0.5               # only hold names with haircut probability above this
+  regime_filter:
+    enabled: false
+    scale: 0.5                # exposure multiplier in risk-off regime
+    vix_threshold: 30
+  equal_weight_comparison: true
+
+execution:
+  entry: next_open
+  atr_period: 14
+  atr_stop_mult: 4.0
+  trailing_atr_mult: 5.0
+  use_stops: true
+
+risk:
+  kill_switch:
+    drawdown: null            # null => capital.max_drawdown
+    deviation_z: -2.0         # live mean return vs backtest distribution
+    min_live_months: 3
+    simulate_in_backtest: true
+
+live:
+  paper_min_months: 3
+  paper_recommended_months: 6
+  ledger_dir: artifacts/paper
+  psi_alert: 0.25
+  decay_review_months: 36
+  dead_signal_tstat: 0.5
+
+report:
+  output_dir: reports_out
+  title: "stocksel — research report"
+
+paths:
+  artifacts: artifacts
