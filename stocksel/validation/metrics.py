@@ -54,7 +54,8 @@ def sortino(r, rf=None, ppy=12):
 def drawdown_series(r) -> pd.Series:
     r = pd.Series(r).fillna(0.0)
     eq = (1 + r).cumprod()
-    return eq / eq.cummax() - 1
+    # Initial account equity is 1, even when the first measured period loses.
+    return eq / eq.cummax().clip(lower=1.0) - 1
 
 
 def max_drawdown(r):

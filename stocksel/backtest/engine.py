@@ -6,7 +6,8 @@
   at each close and executed at the next open; a stopped name is not re-bought
   until the next rebalance;
 * delisting: the position is realized at the last close x (1 + delisting return);
-* kill switch: drawdown beyond the limit liquidates at the next open and halts trading.
+* kill switch: drawdown beyond the limit liquidates at the next executable open
+  and halts trading; optional pre-registered re-entry is disabled by default.
 """
 from __future__ import annotations
 
@@ -24,10 +25,14 @@ class EngineResult:
     daily: pd.DataFrame
     trades: pd.DataFrame
     kill_events: list = field(default_factory=list)
+    reentry_events: list = field(default_factory=list)
+    initial_equity: float | None = None
 
     def monthly(self) -> pd.DataFrame:
         eq = self.daily[["equity", "bench"]].resample("ME").last()
-        first = self.daily[["equity", "bench"]].iloc[[0]]
+        first = self.daily[["equity", "bench"]].iloc[[0]].copy()
+        if self.initial_equity is not None:
+            first.loc[:, :] = self.initial_equity
         eq = pd.concat([first.set_axis([first.index[0] - pd.Timedelta(days=1)]), eq])
         m = eq.pct_change().dropna()
         m.columns = ["net", "bench"]
@@ -49,6 +54,13 @@ def run_daily(bundle: DataBundle, targets: dict, cfg, use_stops: bool | None = N
     use_stops = ex.use_stops if use_stops is None else use_stops
     kill_switch = cfg.risk.kill_switch.simulate_in_backtest if kill_switch is None else kill_switch
     kill_threshold = kill_drawdown(cfg) if kill_threshold is None else kill_threshold
+    reentry = cfg.risk.kill_switch.get("reentry", {})
+    allow_reentry = bool(reentry.get("enabled", False))
+    cooldown = int(reentry.get("cooldown_days", 21))
+    trend_days = int(reentry.get("trend_days", 126))
+    recovery = float(reentry.get("recovery_fraction", 0.05))
+    if allow_reentry and (cooldown < 1 or trend_days < 2 or not 0 <= recovery < 1):
+        raise ValueError("reentry requires cooldown_days >= 1, trend_days >= 2, recovery_fraction in [0, 1)")
     cm = CostModel(cfg.costs, cost_multiplier)
     dates = bundle.dates
     tick = bundle.tickers
@@ -60,6 +72,7 @@ def run_daily(bundle: DataBundle, targets: dict, cfg, use_stops: bool | None = N
     DR = bundle.delist_returns.reindex(tick).fillna(cfg.data.default_delisting_return).to_numpy()
     rf = bundle.rf_daily().to_numpy()
     bo, bc = bundle.benchmark["open"].to_numpy(), bundle.benchmark["close"].to_numpy()
+    trend = bundle.benchmark["close"].rolling(trend_days, min_periods=trend_days).mean().to_numpy()
 
     dec = sorted(d for d in targets if d in dates)
     exec_day = {}
@@ -78,8 +91,9 @@ def run_daily(bundle: DataBundle, targets: dict, cfg, use_stops: bool | None = N
     pending: dict[int, str] = {}
     blocked: set[int] = set()
     killed = False
+    killed_day, killed_bench = None, None
     peak = cash
-    kill_events, trades, rows = [], [], []
+    kill_events, reentry_events, trades, rows = [], [], [], []
     k_atr, k_tr = float(ex.atr_stop_mult), float(ex.trailing_atr_mult)
 
     def trade(i, dsh, t, reason):
@@ -88,7 +102,11 @@ def run_daily(bundle: DataBundle, targets: dict, cfg, use_stops: bool | None = N
         if not np.isfinite(px) or dsh == 0:
             return 0.0
         notional = abs(dsh) * px
-        c = cm.cost_usd(np.array([notional]), np.array([ADV[t, i]]), np.array([VOL[t, i]]))
+        # Closing volume/volatility of execution day t are unavailable at its
+        # open. Use only the last completed session's estimates.
+        prior_adv = ADV[t - 1, i] if t > 0 else np.nan
+        prior_vol = VOL[t - 1, i] if t > 0 else np.nan
+        c = cm.cost_usd(np.array([notional]), np.array([prior_adv]), np.array([prior_vol]))
         cost = float(sum(v[0] for v in c.values()))
         cash -= dsh * px + cost
         if shares[i] == 0 and dsh > 0:
@@ -117,6 +135,19 @@ def run_daily(bundle: DataBundle, targets: dict, cfg, use_stops: bool | None = N
         open_px = np.where(np.isfinite(O[t]), O[t], last_px)
         held_val = np.nansum(shares * open_px)
         eq_open = cash + held_val
+        # Re-entry is evaluated using t-1 data at an existing rebalance. Never
+        # cancel an outstanding liquidation or revive positions without a quote.
+        if (killed and allow_reentry and t in exec_day and not pending
+                and not np.any(shares != 0) and killed_day is not None
+                and t - killed_day >= cooldown and t > 0
+                and np.isfinite(bc[t - 1]) and np.isfinite(trend[t - 1])
+                and bc[t - 1] > trend[t - 1]
+                and bc[t - 1] >= killed_bench * (1 + recovery)):
+            killed = False
+            peak = eq_open  # cycle risk budget; lifetime DD remains in equity
+            reentry_events.append({"date": dates[t], "equity": eq_open,
+                                   "previous_kill_date": dates[killed_day],
+                                   "benchmark_prior_close": bc[t - 1]})
         target_sh = None
         if t in exec_day and not killed:
             blocked.clear()
@@ -132,7 +163,9 @@ def run_daily(bundle: DataBundle, targets: dict, cfg, use_stops: bool | None = N
             if shares[i] != 0 and np.isfinite(O[t, i]):
                 day_cost += trade(i, -shares[i], t, why)
                 blocked.add(i)
-            pending.pop(i, None)
+                pending.pop(i, None)
+            elif shares[i] == 0:
+                pending.pop(i, None)
         if target_sh is not None:
             target_sh[list(blocked)] = 0.0
             delta = target_sh - shares
@@ -167,6 +200,7 @@ def run_daily(bundle: DataBundle, targets: dict, cfg, use_stops: bool | None = N
                     pending[i] = "atr_stop" if stop == p["entry_px"] - k_atr * a_e else "trailing_stop"
         if kill_switch and not killed and equity / peak - 1 <= -kill_threshold:
             killed = True
+            killed_day, killed_bench = t, bc[t]
             kill_events.append({"date": dates[t], "equity": equity, "drawdown": equity / peak - 1})
             for i in np.where(shares != 0)[0]:
                 pending[i] = "kill_switch"
@@ -174,11 +208,13 @@ def run_daily(bundle: DataBundle, targets: dict, cfg, use_stops: bool | None = N
                      "exposure": float(np.nansum(shares * last_px) / equity) if equity > 0 else 0.0,
                      "n_pos": int((shares != 0).sum()), "cost": day_cost, "killed": killed})
     daily = pd.DataFrame(rows).set_index("date")
-    daily["bench"] = daily["bench"] / daily["bench"].iloc[0] * float(cfg.capital.initial)
+    # Compare from the first execution open, retaining its intraday movement.
+    daily["bench"] = daily["bench"] / bo[t0] * float(cfg.capital.initial)
     for i, p in pos.items():  # mark open positions
         trades.append(_close(dict(p, cash_out=p["cash_out"] + shares[i] * last_px[i]), dates[-1], last_px[i],
                              "open", bc[-1], sold=False))
-    return EngineResult(daily=daily, trades=pd.DataFrame(trades), kill_events=kill_events)
+    return EngineResult(daily=daily, trades=pd.DataFrame(trades), kill_events=kill_events,
+                        reentry_events=reentry_events, initial_equity=float(cfg.capital.initial))
 
 
 def _close(p: dict, date, px, reason, bench_px, sold: bool = True) -> dict:
