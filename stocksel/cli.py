@@ -34,10 +34,12 @@ def cmd_holdout(cfg, args):
     from .reports.html import write_report
     res = run_holdout(cfg, force=args.force_reopen)
     m = res["final_metrics"]
-    passed = (m.get("excess_ann") or -1) > 0 and (m.get("sharpe") or -9) > (m.get("bench_sharpe") or 9)
+    from .validation.readiness import holdout_passed
+    passed = holdout_passed(res, cfg)
     spec_path = Path(cfg.paths.artifacts) / "final_spec.json"
     spec = json.loads(spec_path.read_text())
     spec["holdout_passed"] = bool(passed and not res["lock"]["contaminated"])
+    spec["validation_protocol"] = "real_pit_holdout_v1"
     spec["holdout_metrics"] = {k: m.get(k) for k in ("excess_ann", "sharpe", "bench_sharpe", "max_drawdown")}
     spec_path.write_text(json.dumps(spec, indent=2, default=str))
     path = write_report(res, _out(cfg) / "holdout_report.html")
@@ -131,8 +133,17 @@ def main(argv=None):
     p.add_argument("--file"); p.add_argument("--asof")
     sub.add_parser("monitor")
     sub.add_parser("review")
+    app = sub.add_parser("app", help="start the local research dashboard (no brokerage execution)")
+    app.add_argument("--host", default="127.0.0.1")
+    app.add_argument("--port", default=8000, type=int)
+    app.add_argument("--feed", choices=["synthetic", "alpaca", "yfinance"], default=None)
     args = ap.parse_args(argv)
     cfg = load_config(args.config)
+    if args.cmd == "app":
+        import uvicorn
+        from .web.app import create_app
+        uvicorn.run(create_app(cfg, feed_name=args.feed), host=args.host, port=args.port)
+        return
     {"research": cmd_research, "holdout": cmd_holdout, "recommend": cmd_recommend, "paper": cmd_paper,
      "monitor": cmd_monitor, "review": cmd_review}[args.cmd](cfg, args)
 

@@ -267,6 +267,12 @@ def run_research(cfg: Config, bundle=None, quick: bool = False) -> dict:
             "keep_importance": keep_imp, "vol_target": vt, "research_end": str(data.dates[-1].date()),
             "holdout_start": str(hstart.date()), "dsr": dsr["dsr"], "pbo": pbo_res["pbo"],
             "created": time.strftime("%Y-%m-%dT%H:%M:%S")}
+    spec["research_gate"] = {
+        "full_validation": not quick,
+        "sanity_passed": all(san.get(name, {}).get("passed") is True
+                             for name in ("shuffled_labels", "influence", "noise_canary")),
+        "blocking_flags": [flag for flag in flags if flag["level"] in ("critical", "serious")],
+    }
     (art / "final_spec.json").write_text(json.dumps(spec, indent=2, default=str))
     result = {
         "kind": "research", "config": cfg.to_dict(), "meta": data.meta, "hstart": hstart,
@@ -285,6 +291,14 @@ def run_research(cfg: Config, bundle=None, quick: bool = False) -> dict:
     }
     with (art / "research_result.pkl").open("wb") as fh:
         pickle.dump(result, fh)
+    # Safe, portable API summary; the dashboard never unpickles report files.
+    summary = {"config_hash": cfg.hash(), "metrics": final_metrics, "n_trials": n_trials,
+               "red_flags": flags, "signal_decay": dtab.reset_index().to_dict(orient="records")}
+    def json_default(value):
+        return value.item() if hasattr(value, "item") else str(value)
+    # Round-trip via pandas normalizes NaN to null for strict JSON clients.
+    normalized = json.loads(pd.Series(summary).to_json(default_handler=json_default))
+    (art / "validation_summary.json").write_text(json.dumps(normalized, indent=2))
     log(f"research done in {result['runtime_sec']:.0f}s")
     return result
 

@@ -36,7 +36,7 @@ from .calendar import first_trading_day_after_months, next_trading_day
 
 
 def recommend(cfg, asof: str | None = None, bundle=None, prev_weights: pd.Series | None = None,
-              spec: dict | None = None) -> tuple[pd.DataFrame, dict]:
+              spec: dict | None = None, include_all: bool = False) -> tuple[pd.DataFrame, dict]:
     art = Path(cfg.paths.artifacts)
     spec = spec or json.loads((art / "final_spec.json").read_text())
     full = bundle if bundle is not None else load_bundle(cfg)
@@ -74,21 +74,23 @@ def recommend(cfg, asof: str | None = None, bundle=None, prev_weights: pd.Series
         w = w[w >= min_pos]
     contrib = ensemble_contributions(members, Xn)
     contrib.index = Xn.index.get_level_values(1)
-    tops = top_signals(contrib.loc[w.index]) if len(w) else pd.Series(dtype=str)
+    shown = cand.sort_values("score", ascending=False).index if include_all else w.sort_values(ascending=False).index
+    tops = top_signals(contrib.loc[shown]) if len(shown) else pd.Series(dtype=str)
     entry = next_trading_day(last)
     exit_planned = first_trading_day_after_months(entry, h)
     atr = a["atr"].loc[last]
     close = a["close"].loc[last]
-    validated = (spec.get("dsr") or 0) >= cfg.validation.red_flags.min_dsr and bool(spec.get("holdout_passed", False))
+    from ..validation.readiness import system_validated
+    validated = system_validated(spec, cfg, data.meta)
     rows = []
-    for t in w.sort_values(ascending=False).index:
+    for t in shown:
         ph = float(haircut_prob(cand.at[t, "prob"], keep))
         rows.append({
             "ticker": t,
             "calibrated_prob": round(float(cand.at[t, "prob"]), 4),
             "prob_after_haircut": round(ph, 4),
             "expected_excess_after_haircut": round(float(cand.at[t, "er"]) * keep, 5),
-            "position_pct": round(float(w[t]) * 100, 2),
+            "position_pct": round(float(w.get(t, 0.0)) * 100, 2),
             "entry_date": str(entry.date()) + " (open)",
             "planned_exit": str(exit_planned.date()) + " (open, or earlier on stop / rank drop)",
             "stop": round(float(close[t] - cfg.execution.atr_stop_mult * atr[t]), 2) if np.isfinite(atr.get(t, np.nan)) else None,

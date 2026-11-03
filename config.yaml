@@ -188,8 +188,17 @@ risk:
     deviation_z: -2.0         # live mean return vs backtest distribution
     min_live_months: 3
     simulate_in_backtest: true
+    reentry:                   # experimental; not promoted by synthetic results
+      enabled: false
+      cooldown_days: 21
+      trend_days: 126
+      recovery_fraction: 0.05
 
 live:
+  feed: synthetic             # synthetic | alpaca | yfinance; real feeds require real historical tickers
+  poll_seconds: 5
+  scan_seconds: 3600          # check for new completed month; never retrain every quote
+  history_refresh_seconds: 86400
   paper_min_months: 3
   paper_recommended_months: 6
   ledger_dir: artifacts/paper

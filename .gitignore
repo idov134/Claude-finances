@@ -6,3 +6,6 @@ reports_out/
 data_csv/
 *.egg-info/
 .env
+.venv/
+build/
+dist/
