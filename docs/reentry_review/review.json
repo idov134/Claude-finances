@@ -1,0 +1,540 @@
+{
+  "protocol": "gpt_reentry_v1",
+  "synthetic_only": true,
+  "config_snapshot": {
+    "market": {
+      "name": "sp500",
+      "benchmark": "SPY",
+      "timezone": "America/New_York",
+      "close_time": "16:00"
+    },
+    "capital": {
+      "initial": 100000,
+      "max_drawdown": 0.2,
+      "currency": "USD"
+    },
+    "data": {
+      "provider": "synthetic",
+      "start": "1998-01-01",
+      "end": "2025-12-31",
+      "cache_dir": "artifacts/cache",
+      "csv_dir": "data_csv",
+      "membership_file": null,
+      "default_delisting_return": -0.3,
+      "pit_lag_days": 1,
+      "api_keys_env": {
+        "sharadar": "NASDAQ_DATA_LINK_API_KEY",
+        "polygon": "POLYGON_API_KEY",
+        "tiingo": "TIINGO_API_KEY"
+      },
+      "synthetic": {
+        "seed": 7,
+        "n_initial": 420,
+        "ipo_per_year": 22,
+        "annual_delist_prob": 0.035,
+        "alpha_scale": 1.0,
+        "post_2005_decay": 0.6,
+        "news_per_month": 1.2
+      }
+    },
+    "universe": {
+      "min_price": 5.0,
+      "min_market_cap": 2000000000.0,
+      "min_adv_usd": 10000000.0,
+      "exclude_bottom_mcap_pct": 0.1,
+      "min_history_days": 252,
+      "require_index_membership": true
+    },
+    "features": {
+      "winsor_pct": 0.01,
+      "normalize": "rank",
+      "sets": {
+        "core": [
+          "mom_12_1",
+          "mom_6_1",
+          "illiq",
+          "vol_252",
+          "idio_vol",
+          "size"
+        ],
+        "core_comp": [
+          "mom_12_1",
+          "mom_6_1",
+          "illiq",
+          "vol_252",
+          "idio_vol",
+          "size",
+          "rev_1m",
+          "value_bm",
+          "value_ep",
+          "quality_gpa",
+          "quality_roe",
+          "sue",
+          "pead",
+          "revisions"
+        ],
+        "all": [
+          "mom_12_1",
+          "mom_6_1",
+          "illiq",
+          "vol_252",
+          "idio_vol",
+          "size",
+          "rev_1m",
+          "value_bm",
+          "value_ep",
+          "quality_gpa",
+          "quality_roe",
+          "sue",
+          "pead",
+          "revisions",
+          "news_sent",
+          "regime_trend",
+          "regime_vol",
+          "regime_vix"
+        ]
+      },
+      "disabled": []
+    },
+    "signals": {
+      "haircut": 0.5,
+      "registry": {
+        "mom_12_1": {
+          "family": "momentum",
+          "published": true,
+          "year": 1993,
+          "ref": "Jegadeesh & Titman (1993)"
+        },
+        "mom_6_1": {
+          "family": "momentum",
+          "published": true,
+          "year": 1993,
+          "ref": "Jegadeesh & Titman (1993)"
+        },
+        "rev_1m": {
+          "family": "reversal",
+          "published": true,
+          "year": 1990,
+          "ref": "Jegadeesh (1990); Lehmann (1990)"
+        },
+        "illiq": {
+          "family": "liquidity",
+          "published": true,
+          "year": 2002,
+          "ref": "Amihud (2002)"
+        },
+        "vol_252": {
+          "family": "volatility",
+          "published": true,
+          "year": 2006,
+          "ref": "Ang, Hodrick, Xing & Zhang (2006); Baker et al. (2011)"
+        },
+        "idio_vol": {
+          "family": "volatility",
+          "published": true,
+          "year": 2006,
+          "ref": "Ang, Hodrick, Xing & Zhang (2006)"
+        },
+        "size": {
+          "family": "control",
+          "published": true,
+          "year": 1981,
+          "ref": "Banz (1981)"
+        },
+        "value_bm": {
+          "family": "value",
+          "published": true,
+          "year": 1992,
+          "ref": "Fama & French (1992)"
+        },
+        "value_ep": {
+          "family": "value",
+          "published": true,
+          "year": 1977,
+          "ref": "Basu (1977)"
+        },
+        "quality_gpa": {
+          "family": "quality",
+          "published": true,
+          "year": 2013,
+          "ref": "Novy-Marx (2013)"
+        },
+        "quality_roe": {
+          "family": "quality",
+          "published": true,
+          "year": 2015,
+          "ref": "Hou, Xue & Zhang (2015)"
+        },
+        "sue": {
+          "family": "earnings",
+          "published": true,
+          "year": 1989,
+          "ref": "Bernard & Thomas (1989)"
+        },
+        "pead": {
+          "family": "earnings",
+          "published": true,
+          "year": 1968,
+          "ref": "Ball & Brown (1968)"
+        },
+        "revisions": {
+          "family": "analyst",
+          "published": true,
+          "year": 1996,
+          "ref": "Chan, Jegadeesh & Lakonishok (1996)"
+        },
+        "news_sent": {
+          "family": "text",
+          "published": true,
+          "year": 2023,
+          "ref": "Tetlock (2007); Lopez-Lira & Tang (2023)"
+        },
+        "regime_trend": {
+          "family": "regime",
+          "published": true,
+          "year": 2007,
+          "ref": "Faber (2007)"
+        },
+        "regime_vol": {
+          "family": "regime",
+          "published": true,
+          "year": 2017,
+          "ref": "Moreira & Muir (2017)"
+        },
+        "regime_vix": {
+          "family": "regime",
+          "published": true,
+          "year": 2017,
+          "ref": "Moreira & Muir (2017)"
+        }
+      }
+    },
+    "news": {
+      "scorer": "lexicon",
+      "precomputed_file": null,
+      "llm": {
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "knowledge_cutoff": null,
+        "cache_file": "artifacts/cache/news_scores.jsonl",
+        "max_body_chars": 12000
+      },
+      "lookback_days": 21,
+      "rolling_sharpe_days": 252,
+      "target_sharpe": 1.0,
+      "min_obs": 126,
+      "daily": {
+        "holding_days": 2,
+        "top_frac": 0.1,
+        "cost_multiplier": 2.0
+      }
+    },
+    "labels": {
+      "horizon_months": 1,
+      "benchmark": "index",
+      "horizons_to_test": [
+        1,
+        3
+      ]
+    },
+    "models": {
+      "feature_set": "core_comp",
+      "baseline": "logit",
+      "candidates": [
+        "logit",
+        "ridge",
+        "enet",
+        "lgbm",
+        "mlp"
+      ],
+      "calibration": "platt",
+      "calibration_frac": 0.2,
+      "seed": 11,
+      "n_jobs": 4,
+      "params": {
+        "logit": {
+          "C": 0.05
+        },
+        "ridge": {
+          "alpha": 50.0
+        },
+        "enet": {
+          "C": 0.05,
+          "l1_ratio": 0.5
+        },
+        "lgbm": {
+          "n_estimators": 250,
+          "learning_rate": 0.03,
+          "num_leaves": 15,
+          "max_depth": 4,
+          "min_child_samples": 300,
+          "subsample": 0.7,
+          "colsample_bytree": 0.7,
+          "reg_lambda": 10.0
+        },
+        "mlp": {
+          "hidden_layer_sizes": [
+            32,
+            16
+          ],
+          "alpha": 0.01,
+          "max_iter": 40,
+          "learning_rate_init": 0.001
+        }
+      },
+      "gate": {
+        "min_prob_outperform": 0.8,
+        "block_size": 6
+      }
+    },
+    "validation": {
+      "walk_forward": {
+        "min_train_months": 60,
+        "train_window_months": 120,
+        "retrain_every_months": 12
+      },
+      "purged_kfold": {
+        "n_splits": 5,
+        "embargo_pct": 0.01
+      },
+      "cpcv": {
+        "n_groups": 6,
+        "n_test_groups": 2
+      },
+      "pbo": {
+        "n_blocks": 16,
+        "max_combinations": 5000
+      },
+      "holdout_months": 24,
+      "selection": "preregistered",
+      "bootstrap": {
+        "n": 2000,
+        "block": 6,
+        "seed": 3
+      },
+      "regimes": {
+        "dotcom_bust": [
+          "2000-03-01",
+          "2002-10-31"
+        ],
+        "gfc_2008": [
+          "2007-10-01",
+          "2009-03-31"
+        ],
+        "covid_2020": [
+          "2020-02-01",
+          "2020-06-30"
+        ],
+        "bear_2022": [
+          "2022-01-01",
+          "2022-12-31"
+        ]
+      },
+      "structural_break": "2005-01-01",
+      "influence_drop_frac": 0.001,
+      "red_flags": {
+        "max_accuracy": 0.65,
+        "max_sharpe": 2.0,
+        "min_dsr": 0.95,
+        "max_pbo": 0.5
+      }
+    },
+    "trials": {
+      "top_n": [
+        30,
+        50
+      ],
+      "buffer": [
+        true,
+        false
+      ],
+      "weighting": [
+        "capped_value"
+      ],
+      "regime_filter": [
+        false
+      ],
+      "feature_sets": [
+        "core",
+        "core_comp"
+      ],
+      "horizons": [
+        1
+      ]
+    },
+    "costs": {
+      "commission_bps": 1.0,
+      "min_half_spread_bps": 2.0,
+      "spread_k": 25.0,
+      "slippage_bps": 2.0,
+      "impact_k": 0.5
+    },
+    "portfolio": {
+      "top_n": 50,
+      "buffer": true,
+      "exit_rank_mult": 1.6,
+      "weighting": "capped_value",
+      "max_position": 0.05,
+      "max_sector": 0.3,
+      "max_gross": 1.0,
+      "kelly_fraction": 0.25,
+      "vol_target": null,
+      "vol_lookback_days": 126,
+      "min_prob": 0.5,
+      "min_position": 0.0,
+      "regime_filter": {
+        "enabled": false,
+        "scale": 0.5,
+        "vix_threshold": 30
+      },
+      "equal_weight_comparison": true
+    },
+    "execution": {
+      "entry": "next_open",
+      "atr_period": 14,
+      "atr_stop_mult": 4.0,
+      "trailing_atr_mult": 5.0,
+      "use_stops": true
+    },
+    "risk": {
+      "kill_switch": {
+        "drawdown": null,
+        "deviation_z": -2.0,
+        "min_live_months": 3,
+        "simulate_in_backtest": true,
+        "reentry": {
+          "enabled": false,
+          "cooldown_days": 21,
+          "trend_days": 126,
+          "recovery_fraction": 0.05
+        }
+      }
+    },
+    "live": {
+      "feed": "synthetic",
+      "poll_seconds": 5,
+      "scan_seconds": 3600,
+      "history_refresh_seconds": 86400,
+      "paper_min_months": 3,
+      "paper_recommended_months": 6,
+      "ledger_dir": "artifacts/paper",
+      "psi_alert": 0.25,
+      "decay_review_months": 36,
+      "dead_signal_tstat": 0.5
+    },
+    "report": {
+      "output_dir": "reports_out",
+      "title": "stocksel \u2014 research report"
+    },
+    "paths": {
+      "artifacts": "artifacts"
+    }
+  },
+  "config_hash": "882fae5f0d64fd08",
+  "research_start": "1998-01-01",
+  "research_end": "2023-12-29",
+  "excluded_holdout_start": "2024-01-01",
+  "holdout_opened": false,
+  "n_tickers": 1004,
+  "n_predictions": 77493,
+  "new_distinct_trials": 2,
+  "dsr_charged_trials_at_least": 50,
+  "dsr_limitation": "Prior trial-return variance unavailable; diagnostic only, not certification",
+  "metrics": {
+    "permanent_halt": {
+      "n_periods": 240,
+      "cagr": 0.021909387027952976,
+      "bench_cagr": 0.09180977099562293,
+      "ann_vol": 0.047593774885417446,
+      "bench_vol": 0.17958239066747017,
+      "sharpe": 0.172672604085178,
+      "sharpe_ci_low": -0.4327702644816727,
+      "sharpe_ci_high": 0.6263409064313861,
+      "bench_sharpe": 0.4961357405697406,
+      "psr_0": 0.7873067730741101,
+      "sortino": 0.290996343203342,
+      "max_drawdown": -0.2044062913826029,
+      "bench_max_drawdown": -0.4686652223808193,
+      "calmar": 0.10718548279389062,
+      "bench_calmar": 0.19589627437945853,
+      "excess_ann": -0.08118314304236882,
+      "excess_ci_low": -0.16656970491780845,
+      "excess_ci_high": 0.0012272168973022479,
+      "p_excess_positive": 0.0275,
+      "tracking_error": 0.1673168729430444,
+      "information_ratio": -0.48520595451245374,
+      "capm_alpha": -0.0009534123675518213,
+      "capm_beta": 0.10091812255163748,
+      "hit_rate_periods": 0.4583333333333333,
+      "avg_win_loss_ratio": 0.2864988239783971,
+      "expectancy_period": 0.0019001695153051524,
+      "monthly_max_drawdown": -0.1944640878719679,
+      "kill_events": 1,
+      "reentry_events": 0,
+      "total_cost_usd": 5024.181576063055,
+      "cagr_ci_low": -0.00565435084625405,
+      "cagr_ci_high": 0.05191878252738031,
+      "dsr_diagnostic": 1.398065445767205e-10
+    },
+    "guarded_reentry": {
+      "n_periods": 240,
+      "cagr": 0.11813872635888134,
+      "bench_cagr": 0.09180977099562293,
+      "ann_vol": 0.08971472241696926,
+      "bench_vol": 0.17958239066747017,
+      "sharpe": 1.1291241878767675,
+      "sharpe_ci_low": 0.6205247399432058,
+      "sharpe_ci_high": 1.6551309641785792,
+      "bench_sharpe": 0.4961357405697406,
+      "psr_0": 0.9999997966139744,
+      "sortino": 2.201965852898204,
+      "max_drawdown": -0.20728782363747356,
+      "bench_max_drawdown": -0.4686652223808193,
+      "calmar": 0.5699260298351851,
+      "bench_calmar": 0.19589627437945853,
+      "excess_ann": 0.012161578143595364,
+      "excess_ci_low": -0.04873672295573772,
+      "excess_ci_high": 0.06247269841122474,
+      "p_excess_positive": 0.68,
+      "tracking_error": 0.11766535229050192,
+      "information_ratio": 0.10335734272540872,
+      "capm_alpha": 0.0647522865378905,
+      "capm_beta": 0.4106504852779741,
+      "hit_rate_periods": 0.55,
+      "avg_win_loss_ratio": 1.570379705234871,
+      "expectancy_period": 0.009678896280802167,
+      "monthly_max_drawdown": -0.1944640878719679,
+      "kill_events": 1,
+      "reentry_events": 1,
+      "total_cost_usd": 52736.21701357242,
+      "cagr_ci_low": 0.06867147619718027,
+      "cagr_ci_high": 0.16828400093066806,
+      "dsr_diagnostic": 0.032803044674908945
+    }
+  },
+  "classification": {
+    "n": 76729,
+    "accuracy": 0.5207157658773085,
+    "auc": 0.5237128352478837,
+    "log_loss": 0.6918269427443537,
+    "brier": 0.24934011961027627,
+    "base_rate": 0.48344172346831055,
+    "ic_mean": 0.047823380996625926,
+    "ic_tstat": 11.533959969731885,
+    "xs_r2": 0.006378746056745861
+  },
+  "pair_pbo": {
+    "pbo": 0.0108,
+    "n_trials": 2,
+    "n_periods": 240,
+    "n_combinations": 5000,
+    "median_oos_rank_of_is_best": 0.6666666666666666
+  },
+  "combined_pbo": null,
+  "annualized_net_improvement_ci": [
+    0.05177910922786122,
+    0.13582235256948136
+  ],
+  "bootstrap_probability_net_improvement": 1.0,
+  "decision": "Disabled by default: synthetic only and prior full trial matrix unavailable"
+}

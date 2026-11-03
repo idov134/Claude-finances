@@ -1,5 +1,11 @@
 # תוצאות הרצת הדוגמה (נתונים סינתטיים בלבד)
 
+> **GPT branch note:** the numbers below are the original historical demo,
+> produced before execution-cost and return/drawdown-accounting fixes. They have
+> not been relabeled as results of the corrected engine. See
+> [ALGO_REVIEW.md](ALGO_REVIEW.md) for the new, research-only comparison; the used
+> 2024–2025 holdout was not reopened.
+
 > ⚠️ **כל המספרים כאן מגיעים משוק סינתטי** (`data.provider: synthetic`, seed 7, 1998–2025). בשוק הזה שתלנו אנומליות בגודל ריאלי, והמסלול השנתי של המדד מעוגן לתשואות ההיסטוריות המשוערות של S&P 500. התוצאות מוכיחות שהצנרת עובדת: היא מזהה אות כשיש כזה, דוחה עולם בלי אות, ומסמנת בעיות. הן **לא** אומרות דבר על השוק האמיתי. הדוחות המלאים נמצאים ב-[`sample_reports/`](sample_reports/).
 
 ## 1. מחקר (1998–2023, מחוץ למדגם מ-2004)
@@ -79,5 +85,5 @@ revisions 0.038 · pead 0.028 · sue 0.026 · mom_6_1 0.033 · mom_12_1 0.031 ·
 
 ## 4. מה צריך כדי לבדוק את המערכת על השוק האמיתי
 1. מנוי Sharadar (SEP, SF1, TICKERS, SP500, ACTIONS). מגדירים `data.provider: sharadar` ואת `NASDAQ_DATA_LINK_API_KEY`.
-2. מוחקים את `artifacts/` (רישום הניסיונות וה-holdout של הסינתטי), ומריצים `research` ← `holdout` פעם אחת.
+2. Preserve `artifacts/`, its trial history, and the used synthetic holdout lock. For a genuinely new, versioned real dataset, use a separate artifacts directory and pre-register a new untouched test window. Never delete a lock or relabel the used 2024–2025 window to obtain another clean holdout.
 3. לאות החדשות: מקור עם טקסט מלא ו-LLM עם cutoff מתועד. אחרת האות ייבדק רק ב-paper trading.
