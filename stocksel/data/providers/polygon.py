@@ -16,8 +16,11 @@ API = "https://api.polygon.io"
 
 class PolygonProvider(DataProvider):
     name = "polygon"
-    survivorship_free = True     # when delisted tickers are requested via active=false
-    pit_fundamentals = True      # financials carry filing_date
+    # This adapter consumes a user-supplied ticker list and prices/current
+    # shares only. Vendor capabilities are not evidence that this particular
+    # load contains delisted names, PIT membership or as-reported financials.
+    survivorship_free = False
+    pit_fundamentals = False
 
     def _get(self, path, **params):
         params["apiKey"] = self.api_key()
@@ -50,4 +53,6 @@ class PolygonProvider(DataProvider):
         bt = self.cfg.market.benchmark
         b = pd.DataFrame(self._get(f"/v2/aggs/ticker/{bt}/range/1/day/{start}/{end}", adjusted="true", limit=50000))
         bench = pd.DataFrame({"open": b["o"].values, "close": b["c"].values}, index=pd.to_datetime(b["t"], unit="ms"))
-        return assemble(prices, bench, self.meta(warning="market cap from current share count"))
+        return assemble(prices, bench, self.meta(warning=(
+            "market cap from current share count; delisted coverage and PIT membership "
+            "unverified; no fundamentals loaded")))

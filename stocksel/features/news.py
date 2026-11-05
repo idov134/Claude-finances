@@ -190,7 +190,7 @@ def assert_cutoff_before(scorer: SentimentScorer, eval_start) -> None:
 def effective_day_positions(ts_utc: pd.Series, dates: pd.DatetimeIndex, tz: str, close_time: str) -> np.ndarray:
     """Index of the first trading day whose close is strictly after the article timestamp."""
     local = pd.to_datetime(ts_utc, utc=True).dt.tz_convert(tz).dt.tz_localize(None)
-    closes = decision_timestamps(dates, close_time).as_unit("ns")
+    closes = decision_timestamps(dates, close_time, tz).as_unit("ns")
     return closes.searchsorted(pd.DatetimeIndex(local).as_unit("ns"), side="right")
 
 

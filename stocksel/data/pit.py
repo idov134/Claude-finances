@@ -10,20 +10,49 @@ Rules (the core of leakage prevention for non-price data):
 """
 from __future__ import annotations
 
+from functools import lru_cache
+
 import pandas as pd
 
 
-def decision_timestamps(dates: pd.DatetimeIndex, close_time: str = "16:00") -> pd.DatetimeIndex:
+@lru_cache(maxsize=4)
+def _nyse_calendar(start_year: int, end_year: int):
+    import exchange_calendars as xcals
+    return xcals.get_calendar("XNYS", start=f"{start_year}-01-01", end=f"{end_year}-12-31")
+
+
+def decision_timestamps(dates: pd.DatetimeIndex, close_time: str = "16:00",
+                        tz: str = "America/New_York") -> pd.DatetimeIndex:
+    """Naive exchange-local decision times, respecting NYSE early closes.
+
+    The supplied date grid remains authoritative for synthetic/non-US datasets.
+    NYSE sessions use actual closes when the configured strategy uses the normal
+    New York 16:00 close. Non-session rows in synthetic business-day calendars
+    retain their configured close; this does not certify real-provider calendars.
+    """
+    dates = pd.DatetimeIndex(dates).normalize()
     hh, mm = (int(x) for x in close_time.split(":"))
-    return pd.DatetimeIndex(dates).normalize() + pd.Timedelta(hours=hh, minutes=mm)
+    out = pd.Series(dates + pd.Timedelta(hours=hh, minutes=mm), index=dates)
+    if len(dates) and tz == "America/New_York" and close_time == "16:00":
+        cal = _nyse_calendar(int(dates.year.min()) - 1, int(dates.year.max()) + 1)
+        sessions = dates.intersection(cal.sessions)
+        if len(sessions):
+            closes = cal.schedule.loc[sessions, "close"].dt.tz_convert(tz).dt.tz_localize(None)
+            out.loc[sessions] = closes.to_numpy()
+    return pd.DatetimeIndex(out.to_numpy())
 
 
 def availability(series: pd.Series, tz: str, lag_days: int = 0) -> pd.Series:
-    """Naive local-time availability of each event."""
+    """Naive local-time availability; naive inputs are interpreted as local.
+
+    Date-only inputs naturally begin at midnight. Explicit intraday timestamps
+    must retain their time; normalizing them would leak after-close events.
+    The configured calendar-day publication lag also applies to aware inputs.
+    """
     ts = pd.to_datetime(series)
     if getattr(ts.dt, "tz", None) is not None:
-        return ts.dt.tz_convert(tz).dt.tz_localize(None)
-    return ts.dt.normalize() + pd.Timedelta(days=lag_days)
+        ts = ts.dt.tz_convert(tz).dt.tz_localize(None)
+    return ts + pd.Timedelta(days=lag_days)
 
 
 def asof_wide(events: pd.DataFrame, time_col: str, value_cols: list[str], decision_dates: pd.DatetimeIndex,
@@ -39,7 +68,7 @@ def asof_wide(events: pd.DataFrame, time_col: str, value_cols: list[str], decisi
     ev = events.loc[events["ticker"].isin(tickers), ["ticker", time_col] + value_cols].copy()
     ev["avail"] = availability(ev[time_col], tz, lag_days).astype("datetime64[ns]")
     ev = ev.dropna(subset=["avail"]).sort_values("avail", kind="stable")
-    dts = decision_timestamps(decision_dates, close_time)
+    dts = decision_timestamps(decision_dates, close_time, tz)
     left = pd.DataFrame({"dt": dts.repeat(len(tickers)).astype("datetime64[ns]"),
                          "date": decision_dates.repeat(len(tickers)),
                          "ticker": list(tickers) * len(decision_dates)})

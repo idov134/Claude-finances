@@ -10,8 +10,15 @@ from .bundle import DataBundle  # noqa: F401
 
 
 def load_bundle(cfg, use_cache: bool = True) -> DataBundle:
-    """Load data from the configured provider, with a local pickle cache keyed by the data config."""
-    key = hashlib.sha256(json.dumps(cfg.to_dict()["data"], sort_keys=True, default=str).encode()).hexdigest()[:12]
+    """Cache canonical data by provider inputs, market identity and schema version.
+
+    Market settings select the benchmark and interpretation of timestamps. A
+    cache from another benchmark/timezone must never silently satisfy a load.
+    Versioning also avoids reusing the former incomplete cache identity.
+    """
+    config = cfg.to_dict()
+    identity = {"schema_version": 2, "data": config["data"], "market": config["market"]}
+    key = hashlib.sha256(json.dumps(identity, sort_keys=True, default=str).encode()).hexdigest()[:12]
     cache = Path(cfg.data.cache_dir) / f"bundle_{cfg.data.provider}_{key}.pkl"
     if use_cache and cache.exists():
         with cache.open("rb") as fh:

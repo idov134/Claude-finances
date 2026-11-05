@@ -26,7 +26,7 @@ class SharadarProvider(DataProvider):
     survivorship_free = True
     pit_fundamentals = True
 
-    def _table(self, table: str, **params) -> pd.DataFrame:
+    def _table(self, table_name: str, **params) -> pd.DataFrame:
         params = {k.replace("__", "."): v for k, v in params.items()}
         params["api_key"] = self.api_key()
         frames, cursor = [], None
@@ -34,7 +34,7 @@ class SharadarProvider(DataProvider):
             if cursor:
                 params["qopts.cursor_id"] = cursor
             for attempt in range(4):
-                r = requests.get(BASE.format(table=table), params=params, timeout=60)
+                r = requests.get(BASE.format(table=table_name), params=params, timeout=60)
                 if r.status_code == 429:
                     time.sleep(2 ** attempt)
                     continue

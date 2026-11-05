@@ -16,6 +16,12 @@ def _ttm(f: pd.DataFrame) -> pd.DataFrame:
     g = f.groupby("ticker", sort=False)
     for col in FLOW:
         f[col + "_ttm"] = g[col].transform(lambda s: s.rolling(4, min_periods=4).sum())
+    # A later-period filing may arrive before a delayed earlier quarter. The
+    # aggregate cannot be available until every constituent quarter is public.
+    # Delay the entire joined row conservatively, including balance-sheet fields,
+    # rather than letting the time join expose future quarterly flows.
+    publication_dates = [f["publish_date"]] + [g["publish_date"].shift(i) for i in range(1, 4)]
+    f["publish_date"] = pd.concat(publication_dates, axis=1).max(axis=1)
     return f
 
 
