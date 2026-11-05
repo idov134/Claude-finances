@@ -131,8 +131,9 @@ class Feed(Protocol):
 
 class SyntheticFeed:
     """Advance one historical trading bar per poll; never invent current prices."""
-    def __init__(self, bundle, replay_start=None):
+    def __init__(self, bundle, replay_start=None, auto_advance=True):
         self.bundle = bundle
+        self.auto_advance = auto_advance
         if replay_start is None:
             self._cursor = max(0, len(bundle.dates) - 21)
         else:
@@ -153,8 +154,15 @@ class SyntheticFeed:
         prices = self.bundle.close.iloc[self._cursor]
         out = [Quote(t, float(prices[t]), stamp, now, "synthetic-replay", 0, True)
                for t in tickers if t in prices and math.isfinite(prices[t]) and prices[t] > 0]
-        self._cursor = min(self._cursor + 1, len(self.bundle.dates) - 1)
+        if self.auto_advance:
+            self._cursor = min(self._cursor + 1, len(self.bundle.dates) - 1)
         return out
+
+    def advance(self):
+        if self._cursor >= len(self.bundle.dates) - 1:
+            raise ValueError("Replay ended; no unseen session remains in this demo")
+        self._cursor += 1
+        return self.bundle.dates[self._cursor]
 
     async def close(self) -> None:
         pass

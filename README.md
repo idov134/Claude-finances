@@ -1,5 +1,70 @@
 # stocksel — מערכת מחקר ספקנית לבחירת מניות
 
+## First working release: research to a recorded paper decision
+
+Start from branch `improvement/research-paper-v1` (based on GPT `14c95a0`).
+The Python core and plain JavaScript frontend are retained. No real trading,
+subscription purchase, or public deployment is enabled.
+
+```bash
+python -m venv .venv
+# macOS / Linux
+. .venv/bin/activate
+# Windows PowerShell instead: .venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python -m stocksel app --demo
+```
+
+Use the local server on port 8000. The deterministic seed-7 demo has its own
+persistent account in `artifacts/demo_release/paper`; it never resets an existing
+account or research registry. It fits on research data before the used 2024–2025
+holdout and reserves the following historical month for manual replay.
+Quotes refresh at the current replay date. **Only Advance paper session moves
+the simulation forward.** Restart resumes the recorded ledger session.
+
+Workflow: screen/filter → star a watchlist or select up to three comparisons →
+open a stock's linked detail/chart → enter target weight and thesis/counter-thesis →
+preview estimated costs/exposure → confirm the paper decision → advance one session
+to observe a next-open fill → inspect positions, trade history and the journal.
+Orders are idempotent on retry. The UI protects against cross-origin mutations;
+localhost binding and host validation remain the defaults. There is no broker path.
+
+Screens, watchlists, columns, themes and display time zone persist in local browser
+storage, with JSON export/import. Paper records persist server-side with atomic
+writes, a prior-version backup and JSON export. USD valuation and the selected time
+zone are explicit; Israel time is the display default. ILS translation, Israeli
+tax assumptions and a complete Hebrew/RTL UI are deferred, not silently estimated.
+
+The ledger uses fractional units on a fixed adjusted-price basis. It includes
+costs in cash and cost basis, tracks realized/unrealized P&L, retains unfilled
+orders, and refuses revised/raw incompatible data. Missing values remain unavailable.
+Real quote adapters are still read-only for valuation and stops until corporate
+actions and raw share quantities are reconciled. Paper actions in the web app are
+limited to the synthetic workflow for this release.
+
+Validation and reproduction:
+
+```bash
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 python -m pytest
+python -m stocksel.experiments.comparison
+# Optional frontend syntax checks if Node is installed:
+node --check stocksel/web/static/app.js
+node --check stocksel/web/static/workflow.js
+```
+
+On Windows, set `$env:OMP_NUM_THREADS="1"` and `$env:OPENBLAS_NUM_THREADS="1"`
+before `python -m pytest`. Windows runtime behavior has not been tested here.
+Research comparison output is synthetic engineering evidence, not a profitable
+strategy certification; no new strategy is promoted. Dependencies are declared
+in requirements/pyproject; versions used for the experiment are recorded in its
+report. An exact dependency lock and packaged installer remain deferred.
+
+Release records: [research sources](docs/COMPETITOR_RESEARCH.md),
+[audit, acceptance criteria and roadmap](docs/IMPROVEMENT_PLAN.md),
+[financial contracts](docs/FINANCIAL_CORRECTNESS.md),
+[actual verification](docs/VALIDATION_REPORT.md), and
+[comparison evidence](docs/research_comparison/RESULTS.md).
+
 ## GPT branch: research dashboard and execution audit
 
 This version builds on Claude's `ccr-34655f6e-o332cd` branch. It adds a local,
@@ -30,8 +95,9 @@ The five screens cover freshness/coverage, sortable stock research and details,
 the existing paper ledger, validation/decay, and risk alerts. Every quote shows
 event time, receipt time, age and assumed provider delay; recommendations show
 the separate signal date and age. Light/dark themes and phone widths are supported.
-The paper ledger starts in cash and is read-only in the app: submit/update paper
-orders explicitly with the existing CLI. No brokerage execution is connected.
+The paper ledger starts in cash. The first release adds previewed, idempotent
+synthetic paper actions in the app; the existing CLI remains available.
+No brokerage execution is connected.
 
 FastAPI plus a plain JavaScript frontend keeps the UI asynchronous without a second
 Node build/runtime or external CDN. Quotes poll separately from the hourly

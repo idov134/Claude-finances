@@ -137,9 +137,16 @@ def main(argv=None):
     app.add_argument("--host", default="127.0.0.1")
     app.add_argument("--port", default=8000, type=int)
     app.add_argument("--feed", choices=["synthetic", "alpaca", "yfinance"], default=None)
+    app.add_argument("--demo", action="store_true", help="deterministic manual synthetic replay in a separate persistent demo account")
     args = ap.parse_args(argv)
     cfg = load_config(args.config)
     if args.cmd == "app":
+        if args.demo:
+            if args.feed not in (None, "synthetic"):
+                ap.error("--demo requires the synthetic feed")
+            cfg = cfg.copy_with({"data.provider": "synthetic", "data.start": "1998-01-01",
+                "data.end": "2025-12-31", "data.synthetic.seed": 7, "live.feed": "synthetic",
+                "paths.artifacts": "artifacts/demo_release", "live.ledger_dir": "artifacts/demo_release/paper"})
         import uvicorn
         from .web.app import create_app
         uvicorn.run(create_app(cfg, feed_name=args.feed), host=args.host, port=args.port)

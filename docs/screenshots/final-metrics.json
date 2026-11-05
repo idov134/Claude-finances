@@ -1,0 +1,81 @@
+{
+  "desktop": [
+    1440,
+    1000
+  ],
+  "mobile": [
+    390,
+    844
+  ],
+  "checks": [
+    "saved sector/view reload",
+    "watchlist reload",
+    "3-stock comparison cap",
+    "linked indexed history",
+    "unsent thesis preserved on refresh",
+    "preview\u2192confirm\u2192duplicate retry\u2192next-open fill",
+    "nonnegative cash",
+    "journal reload",
+    "ledger JSON export",
+    "CSV full filtered export",
+    "display timezone persistence",
+    "all five screens at 390px",
+    "no mobile body overflow",
+    "light/dark toggle",
+    "no JavaScript errors",
+    "actual comparison endpoint displayed five primary rules and unknown combined DSR/PBO"
+  ],
+  "render_initial_ms": 1753.1955820013536,
+  "fixture": 378,
+  "filter_ms": [
+    11.600000001490116,
+    2.399999998509884,
+    11.600000001490116,
+    3.7999999970197678,
+    7,
+    7.100000001490116,
+    31.200000002980232,
+    750.5999999940395,
+    21.200000002980232,
+    5.899999998509884,
+    12.600000001490116,
+    5.399999998509884,
+    23.200000002980232,
+    8.799999997019768,
+    17,
+    5.5,
+    17.700000002980232,
+    4.799999997019768,
+    11.400000005960464,
+    6.899999998509884
+  ],
+  "filter_median_ms": 10.100000001490116,
+  "paper_order_id": "4ef3dc13d5e49f813f4e9fac",
+  "duplicate_submission_safe": true,
+  "paper_last_update": "2023-12-05",
+  "paper_trades": 2,
+  "api_ms": [
+    193.3604700025171,
+    142.7447870009928,
+    158.35772999707842,
+    140.0833989973762,
+    140.19624199863756,
+    138.9756819989998,
+    307.2952579968842,
+    180.33943900081795,
+    176.96702599641867,
+    198.17835799767636
+  ],
+  "api_median_ms": 167.66237799674855,
+  "api_max_ms": 307.2952579968842,
+  "note": "Same 378-candidate default synthetic fixture; paper action added one persisted decision. Observed local timings, not production capacity guarantees.",
+  "filter_max_ms": 750.5999999940395,
+  "full_page_filter_max_ms": 31.200000002980232,
+  "observed_failures_and_fixes": [
+    "Saved sector filter was lost during select initialization; restore option before first data render.",
+    "Post-mutation refresh could return early while poll in flight; await poll before fresh snapshot.",
+    "Both-missing equity rows were discarded; retain dates and break plotted lines.",
+    "Cold scanner loading exceeded 60s; this is separately reported, ready-state timings exclude model startup."
+  ],
+  "performance_limitations": "One 750.6ms narrow-filter outlier remains in raw samples. Median improved, but tail latency is not certified. Baseline and final were measured on same environment/378 rows, final adds paper-history state; no production load test."
+}

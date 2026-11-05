@@ -3,11 +3,12 @@
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const number = value => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
-const num = (value, digits = 2) => number(value) ? Number(value).toLocaleString(undefined, {maximumFractionDigits:digits, minimumFractionDigits:digits}) : '—';
+const numberFormats=new Map();
+const num = (value, digits = 2) => {if(!number(value))return '—';if(!numberFormats.has(digits))numberFormats.set(digits,new Intl.NumberFormat(undefined,{maximumFractionDigits:digits,minimumFractionDigits:digits}));return numberFormats.get(digits).format(Number(value));};
 const percent = (value, digits = 1) => number(value) ? `${num(Number(value) * 100, digits)}%` : '—';
 const signedPercent = value => number(value) ? `${Number(value) > 0 ? '+' : ''}${percent(value)}` : '—';
-const amount = value => number(value) ? `${Number(value) < 0 ? '−' : ''}$${num(Math.abs(Number(value)))}` : '—';
-const when = value => { if (!value) return 'Unavailable'; const date = new Date(value); return Number.isNaN(date.getTime()) ? String(value) : `${date.toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',timeZoneName:'short'})}`; };
+const amount = value => number(value) ? `${Number(value) < 0 ? '−' : ''}USD ${num(Math.abs(Number(value)))}` : '—';
+const when = value => { if (!value) return 'Unavailable'; const date = new Date(value); return Number.isNaN(date.getTime()) ? String(value) : `${date.toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',timeZoneName:'short',timeZone:document.getElementById('display-zone')?.value || 'Asia/Jerusalem'})}`; };
 const age = value => !number(value) ? 'Unknown age' : Number(value) < 0 ? 'Clock mismatch' : Number(value) < 60 ? `${num(value,0)}s` : Number(value) < 3600 ? `${num(Number(value)/60,1)}m` : Number(value) < 86400 ? `${num(Number(value)/3600,1)}h` : `${num(Number(value)/86400,1)}d`;
 const safeClass = value => ['fresh','live','stale','error','red','green','amber','neutral','simulated','delayed','closed','invalid','disconnected','critical','warning','info','positive','negative'].includes(String(value)) ? String(value) : 'neutral';
 const empty = (title, text='') => `<div class="empty"><strong>${esc(title)}</strong>${text ? `<p>${esc(text)}</p>` : ''}</div>`;
@@ -76,25 +77,8 @@ function renderOverview(data) {
     return `<div class="feature-item"><h3>${esc(updateObj.label || defaultDescription[0])}</h3><p>${esc(updateObj.description || updateObj.cadence || defaultDescription[1])}</p><time>${esc(timestamp?`Updated ${when(timestamp)}`:'Update time unavailable')}</time></div>`;
   }).join('');
 }
-function renderRecommendations() {
-  const all=snapshot?.recommendations || [];
-  const query=$('ticker-search').value.trim().toUpperCase(), filter=$('confidence-filter').value;
-  const recs=all.filter(rec=>String(rec.ticker).toUpperCase().includes(query) && (filter==='all' || confidence(rec).toLowerCase().startsWith(filter)));
-  recs.sort((a,b)=>{
-    const av=a[sortKey], bv=b[sortKey];
-    if(av===null || av===undefined)return 1;if(bv===null || bv===undefined)return -1;
-    return (number(av)&&number(bv)?Number(av)-Number(bv):String(av).localeCompare(String(bv)))*sortDirection;
-  });
-  $('recommendation-count').textContent=`${recs.length} of ${all.length} ideas`;
-  document.querySelectorAll('.sort').forEach(button=>{const selected=button.dataset.sort===sortKey;button.setAttribute('aria-pressed',String(selected));button.closest('th').setAttribute('aria-sort',selected?(sortDirection===1?'ascending':'descending'):'none');});
-  $('recommendations-body').innerHTML=recs.length?recs.map(rec=>{
-    const quote=quoteFor(rec.ticker),price=recPrice(rec);
-    const priceLabel=number(price)?amount(price):'No quote';
-    const rankChange=number(rec.previous_rank)&&number(rec.rank)?Number(rec.previous_rank)-Number(rec.rank):null;
-    const movement=rankChange===null?'No previous rank':rankChange===0?'Unchanged':`${rankChange>0?'↑':'↓'} ${Math.abs(rankChange)}`;
-    return `<tr><td><button type="button" class="ticker-button" data-ticker="${esc(rec.ticker)}">${esc(rec.ticker)}</button><span class="secondary">Signals ${esc(rec.signal_asof || snapshot.scan?.asof || 'unavailable')}</span></td><td>${esc(num(rec.rank,0))}<span class="secondary">${esc(movement)}</span></td><td>${esc(percent(rec.calibrated_prob))}<span class="secondary">Haircut: ${esc(percent(rec.prob_after_haircut))}</span></td><td>${esc(signedPercent(rec.expected_excess_after_haircut))}</td><td>${esc(number(rec.position_pct)?`${num(rec.position_pct)}%`:'—')}</td><td>${esc(priceLabel)}<span class="secondary">${quote?`${freshBadge(quote.freshness)} · ${esc(age(quote.age_seconds))}`:'Quote unavailable'}</span></td><td>${esc(rec.entry_date || '—')}<span class="secondary">Exit ${esc(rec.planned_exit || '—')}</span></td><td>${esc(amount(rec.stop))}</td><td class="signals-cell">${esc(rec.top3_signals_shap || 'Unavailable')}</td><td><span class="badge neutral">${esc(confidence(rec))}</span></td></tr>`;
-  }).join(''):`<tr><td colspan="10">${empty(all.length?'No matching ideas':'No recommendations available',all.length?'Try a different ticker or confidence filter.':'A completed model scan and eligible candidates are required.')}</td></tr>`;
-}
+function renderRecommendations() { if(typeof renderResearchTable==='function')renderResearchTable(); }
+
 function renderPortfolio(data) {
   const portfolio=data.portfolio || {};
   $('portfolio-metrics').innerHTML=metric('Paper equity',amount(portfolio.equity),'Marked using available provider quotes')+metric('Total paper P&L',amount(portfolio.pnl),`${signedPercent(portfolio.pnl_pct)} since inception`,Number(portfolio.pnl)>=0?'positive':'negative')+metric('Current drawdown',percent(portfolio.drawdown),'From the recorded equity high-water mark',Number(portfolio.drawdown)<0?'negative':'')+metric('Benchmark return',signedPercent(portfolio.benchmark_return),'Same recorded paper period');
@@ -103,11 +87,12 @@ function renderPortfolio(data) {
   renderChart(portfolio.history || []);
 }
 function renderChart(history) {
-  const rows=history.filter(row=>number(row.equity)||number(row.benchmark));
+  const rows=Array.isArray(history)?history.filter(row=>row&&typeof row==='object'):[];
   $('equity-table').innerHTML=rows.length?`<table><thead><tr><th scope="col">Date</th><th scope="col">Paper equity</th><th scope="col">Benchmark</th></tr></thead><tbody>${rows.map(row=>`<tr><td>${esc(row.date)}</td><td>${esc(amount(row.equity))}</td><td>${esc(amount(row.benchmark))}</td></tr>`).join('')}</tbody></table>`:'No equity history is available.';
   if(rows.length<2){$('equity-chart').innerHTML=empty('Waiting for an equity history','At least two paper valuation dates are needed to draw a performance chart.');return;}
   const width=1000,height=290,pad={left:78,right:25,top:22,bottom:43};
   const values=rows.flatMap(row=>[row.equity,row.benchmark]).filter(number).map(Number);
+  if(!values.length){$('equity-chart').innerHTML=empty('Equity values unavailable','Missing valuations remain gaps and are not interpreted as zero.');return;}
   const min=Math.min(...values),max=Math.max(...values),spread=(max-min)||Math.abs(max)*.01||1;
   const low=min-spread*.12,high=max+spread*.12;
   const x=index=>pad.left+index/(rows.length-1)*(width-pad.left-pad.right);
@@ -147,16 +132,10 @@ function render(data) {
   $('validation-notice').hidden=Boolean(validated);
   if(data.disclaimer)$('disclaimer').textContent=data.disclaimer;
   renderOverview(data);renderRecommendations();renderPortfolio(data);renderValidation(data);renderAlerts(data);route();
-  if(selectedTicker && $('stock-detail').open)renderDetail(selectedTicker);
+  if(typeof renderWorkflow==='function')renderWorkflow(data);
 }
-function renderDetail(ticker) {
-  const rec=(snapshot?.recommendations || []).find(row=>row.ticker===ticker);
-  if(!rec)return;
-  const quote=quoteFor(ticker),scan=snapshot.scan || {};
-  $('detail-title').textContent=ticker;
-  const quoteDetails=quote?dataRow('Current quote',amount(quote.price))+dataRow('Data timestamp',when(quote.data_timestamp))+dataRow('Received at',when(quote.received_at))+dataRow('Data age',age(quote.age_seconds))+dataRow('Receive age',age(quote.receive_age_seconds))+dataRow('Provider delay',number(quote.documented_delay_seconds)?age(quote.documented_delay_seconds):'Unknown')+dataRow('Provider',quote.provider || snapshot.feed?.provider || 'Unknown')+dataRow('Quote market session',typeof quote.market_status==='object'?(quote.market_status?.status || quote.market_status?.state):quote.market_status || snapshot.market?.status || 'Unknown')+dataRow('Simulated',quote.simulated?'Yes · historical replay':'No'):'<p>No price quote is available for this ticker.</p>';
-  $('detail-content').innerHTML=`<div class="detail-grid"><div class="detail-stat"><span>Calibrated probability</span><strong>${esc(percent(rec.calibrated_prob))}</strong></div><div class="detail-stat"><span>Probability after haircut</span><strong>${esc(percent(rec.prob_after_haircut))}</strong></div><div class="detail-stat"><span>Expected excess after haircut</span><strong>${esc(signedPercent(rec.expected_excess_after_haircut))}</strong></div><div class="detail-stat"><span>Target position</span><strong>${esc(number(rec.position_pct)?`${num(rec.position_pct)}%`:'—')}</strong></div></div><div class="detail-section"><h3>Position plan</h3><dl>${dataRow('Entry',rec.entry_date || 'Unavailable')}${dataRow('Planned exit',rec.planned_exit || 'Unavailable')}${dataRow('Stop level',amount(rec.stop))}${dataRow('Signal reference close',amount(rec.ref_close))}${dataRow('Confidence',confidence(rec))}</dl></div><div class="detail-section"><h3>Quote freshness ${quote?freshBadge(quote.freshness):''}</h3><dl>${quoteDetails}</dl></div><div class="detail-section"><h3>Signal provenance</h3><dl>${dataRow('Signal date',rec.signal_asof || scan.asof || 'Unavailable')}${dataRow('Signal age',age(rec.signal_age_seconds))}${dataRow('Model scan received',when(scan.scored_at))}${dataRow('Rank',num(rec.rank,0))}${dataRow('Previous rank',num(rec.previous_rank,0))}</dl><p>Signal timestamps and quote timestamps describe different clocks. A fresh quote does not make an older monthly signal real-time.</p></div><div class="detail-section"><h3>Top 3 attributed signals</h3><p>${esc(rec.top3_signals_shap || 'No feature attributions are available.')}</p></div><div class="detail-notice">${esc(confidence(rec))}. Model targets are research outputs, not financial advice or executed orders. Synthetic results do not establish real-market profitability.</div>`;
-}
+function renderDetail(ticker) { if(typeof openResearchDetail==='function')openResearchDetail(ticker); }
+
 function markSnapshotDisconnected() {
   if(!snapshot)return;
   const cached=structuredClone(snapshot);
@@ -190,8 +169,6 @@ async function refresh() {
     if(!snapshot)$('loading').hidden=true;
   } finally {clearTimeout(timeout);activeRequest=false;$('refresh').disabled=false;pollTimer=setTimeout(refresh,5000);}
 }
-$('ticker-search').addEventListener('input',renderRecommendations);
-$('confidence-filter').addEventListener('change',renderRecommendations);
 $('refresh').addEventListener('click',refresh);
 $('theme-toggle').addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
 $('detail-close').addEventListener('click',()=>$('stock-detail').close());
@@ -199,9 +176,9 @@ $('stock-detail').addEventListener('click',event=>{if(event.target===$('stock-de
 $('stock-detail').addEventListener('close',()=>{selectedTicker=null;});
 document.addEventListener('click',event=>{
   const tickerButton=event.target.closest('[data-ticker]');
-  if(tickerButton){selectedTicker=tickerButton.dataset.ticker;renderDetail(selectedTicker);$('stock-detail').showModal();return;}
+  if(tickerButton){selectedTicker=tickerButton.dataset.ticker;renderDetail(selectedTicker);if(!$('stock-detail').open)$('stock-detail').showModal();return;}
   const sortButton=event.target.closest('[data-sort]');
-  if(sortButton){if(sortKey===sortButton.dataset.sort)sortDirection*=-1;else{sortKey=sortButton.dataset.sort;sortDirection=sortKey==='ticker'||sortKey==='rank'?1:-1;}renderRecommendations();}
+  if(sortButton){if(sortKey===sortButton.dataset.sort)sortDirection*=-1;else{sortKey=sortButton.dataset.sort;sortDirection=sortKey==='ticker'||sortKey==='rank'?1:-1;}if(typeof persistScreen==='function')persistScreen();renderRecommendations();}
 });
 window.addEventListener('hashchange',route);
 // Keep the theme reachable on mobile without changing navigation or order.

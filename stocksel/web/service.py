@@ -61,6 +61,7 @@ class MarketService:
         self._portfolio = {"positions": [], "history": []}
         self._position_tickers = set()
         self._high_water = {}
+        self.paper_lock = asyncio.Lock()
 
     async def start(self):
         if not self._tasks:
@@ -75,6 +76,8 @@ class MarketService:
             await self.feed.close()
 
     def _alert(self, key, message, level="warning", ticker=None):
+        if self.alerts.get(key, {}).get("message") == message:
+            return
         self.alerts[key] = {"id": key, "message": message, "level": level,
                             "ticker": ticker, "time": utc_now().isoformat()}
         # Keyed current conditions, bounded in long-running scans.
@@ -82,10 +85,14 @@ class MarketService:
             self.alerts.pop(next(iter(self.alerts)))
 
     def _bootstrap(self):
+        if self.cfg.capital.currency != "USD":
+            raise SetupError("This release reports USD only. ILS/other currencies require dated FX and currency-aware benchmarks; conversion is not implemented")
         if self.bundle is None:
             self.bundle = load_bundle(self.cfg)
         if self.feed_name != "synthetic" and self.bundle.meta.get("source") == "synthetic":
             raise SetupError("Real quote feeds require real historical data: configure data.provider (e.g. csv/sharadar). Synthetic S0000 symbols cannot be sent to a real exchange.")
+        if self.feed_name == "synthetic" and self.bundle.meta.get("source") != "synthetic":
+            raise SetupError("Synthetic replay requires synthetic data; a real dataset cannot be relabeled as simulation")
         if self.feed_name == "synthetic":
             # Do not evaluate or reuse the demo's already-opened final holdout.
             boundary = holdout_start(self.bundle.dates, int(self.cfg.validation.holdout_months))
@@ -151,9 +158,11 @@ class MarketService:
         self._alert("news", "Daily news trading is disabled: the documented net-cost validation failed. No live news stream is connected.", "info")
 
     def _read_portfolio(self):
+        from ..live.paper import PaperLedger
         initial = float(self.cfg.capital.initial)
-        path = Path(self.cfg.live.ledger_dir) / "ledger.json"
-        state = json.loads(path.read_text()) if path.exists() else {"cash": initial, "positions": {}, "equity": []}
+        state = PaperLedger(self.cfg).state
+        initial_value = state.get("initial_capital", initial)
+        initial = float(initial_value) if initial_value is not None else None
         self._position_tickers = set(state.get("positions", {}))
         positions, history = [], []
         for ticker, pos in state.get("positions", {}).items():
@@ -162,11 +171,15 @@ class MarketService:
             mark_date = state.get("last_update") or pos["entry"]
             mark_time = (pd.Timestamp(mark_date).normalize().tz_localize("America/New_York")
                          + pd.Timedelta(hours=16)).tz_convert("UTC").to_pydatetime()
+            session_close = market_status(mark_time).get("session_close")
+            if session_close:
+                mark_time = datetime.fromisoformat(session_close)
             eligible = quote is not None and quote.data_timestamp >= mark_time and self._prices_comparable(quote)
             px = quote.price if eligible else float(pos["last"])
             value = float(pos["shares"]) * px
+            basis = pos.get("cost_basis", float(pos["shares"]) * float(pos["entry_px"]))
             positions.append({"ticker": ticker, **pos, "price": px, "value": value,
-                              "unrealized_pnl": value - float(pos["shares"]) * float(pos["entry_px"]),
+                              "unrealized_pnl": value - float(basis) if basis is not None else None,
                               "valuation_source": quote.provider if eligible else "ledger last mark",
                               "valuation_timestamp": quote.data_timestamp if eligible else mark_time,
                               "freshness": quote.to_dict()["freshness"] if eligible else {"state": "amber", "label": "Ledger historical mark", "icon": "◷"}})
@@ -177,21 +190,80 @@ class MarketService:
         start = state.get("start")
         reference = self.bundle.benchmark.loc[:start, "close"] if start and self.bundle is not None else pd.Series(dtype=float)
         base_bench = float(reference.iloc[-1]) if len(reference) else None
+        if base_bench is not None and (not math.isfinite(base_bench) or base_bench <= 0):
+            base_bench = None
         for row in raw:
             history.append({"date": row["date"], "equity": row["equity"],
-                            "benchmark": initial * row["bench"] / base_bench if base_bench else None})
-        peak = max([initial, equity] + [r["equity"] for r in raw])
+                            "benchmark": initial * row["bench"] / base_bench if base_bench and initial is not None and row.get("bench") is not None else None})
+        peak = max(([initial] if initial is not None else []) + [equity] + [r["equity"] for r in raw])
         return {"initial_capital": initial, "equity": equity, "cash": float(state["cash"]),
-                "pnl": equity - initial, "pnl_pct": equity / initial - 1,
-                "drawdown": equity / peak - 1, "positions": positions, "history": history,
-                "benchmark_return": history[-1]["benchmark"] / initial - 1 if history and base_bench else None,
-                "last_update": state.get("last_update"), "read_only": True}
+                "pnl": equity - initial if initial is not None else None, "pnl_pct": equity / initial - 1 if initial else None,
+                "drawdown": equity / peak - 1 if initial else None, "positions": positions, "history": history,
+                "benchmark_return": history[-1]["benchmark"] / initial - 1 if history and history[-1]["benchmark"] is not None and initial else None,
+                "last_update": state.get("last_update"), "read_only": self.feed_name != "synthetic",
+                "pending": state.get("pending", []), "trades": state.get("trades", [])[-100:],
+                "journal": state.get("journal", [])[-100:], "fees": state.get("fees_paid", 0),
+                "realized_pnl": state.get("realized_pnl"), "currency": self.cfg.capital.currency,
+                "accounting_warnings": state.get("accounting_warnings", [])}
 
     def _prices_comparable(self, quote):
         # Historical panels/ledger shares are adjusted. Raw live trades must not
         # be compared across an unverified corporate-action basis.
-        return quote.simulated or (self.bundle is not None and
-            self.bundle.meta.get("raw_quote_basis_asof") == quote.data_timestamp.date().isoformat())
+        return quote.simulated and self.bundle is not None and self.bundle.meta.get("source") == "synthetic"
+
+    def stock_detail(self, row):
+        ticker = row["ticker"]
+        quote = self.quotes.get(ticker)
+        end = quote.data_timestamp.date().isoformat() if quote else row["signal_asof"]
+        close = self.bundle.close.loc[:end, ticker].tail(252)
+        bench = self.bundle.benchmark.close.reindex(close.index)
+        common = pd.concat({"stock": close, "benchmark": bench}, axis=1).dropna()
+        first = common.index[0] if len(common) else None
+        records = []
+        if first is not None:
+            for date in close.loc[first:].index:
+                records.append({"date": date.date().isoformat(),
+                                "price": close.loc[date] / close.loc[first] * 100,
+                                "benchmark": bench.loc[date] / bench.loc[first] * 100})
+        return clean({**row, "history": records, "evidence": {
+            "source": self.bundle.meta.get("source"), "asof": row["signal_asof"],
+            "currency": self.cfg.capital.currency, "chart_units": "Rebased to 100 on first common observation",
+            "probability_event": f"Positive stock excess return versus the configured benchmark, next open to {self.cfg.labels.horizon_months}-month rebalance open",
+            "expected_return_definition": "Calibration-sample estimate of excess return multiplied by publication haircut; before future trading costs",
+            "confidence_definition": "Validation-gate status; not a probability of profit",
+            "abstention_reasons": [] if row.get("position_pct", 0) > 0 else ["Outside sizing/rank/risk limits or insufficient positive calibrated edge"],
+            "history_limitations": "Synthetic benchmark is a simulated cap-weighted index. Real ETF dividend conventions are not verified.",
+            "factor_evidence": row.get("top3_signals_shap"), "score_history": [],
+            "score_history_status": "Not yet recorded; no history is fabricated"}})
+
+    async def advance_paper(self):
+        from .paper import PaperWorkflow
+        from ..live.paper import PaperLedger
+        PaperWorkflow(self)._ready()
+        cursor = self.feed._cursor
+        if cursor >= len(self.bundle.dates) - 1:
+            raise ValueError("Replay ended; no unseen session remains")
+        next_date = self.bundle.dates[cursor + 1]
+        await asyncio.to_thread(PaperLedger(self.cfg).update, self.bundle.truncate(next_date))
+        self.feed.advance()
+        quotes = await self.feed.poll(sorted({r["ticker"] for r in self.rows} | self._position_tickers))
+        self._accept_quotes(quotes)
+        self._last_poll = utc_now().isoformat()
+        self._portfolio = await asyncio.to_thread(self._read_portfolio)
+        return {"status": "updated", "last_update": str(next_date.date())}
+
+    def _accept_quotes(self, quotes):
+        now = utc_now()
+        for q in quotes:
+            previous = self.quotes.get(q.ticker)
+            if q.data_timestamp > min(now, q.received_at) + timedelta(seconds=5):
+                self._alert("timestamp:" + q.ticker, "Future-dated quote rejected; last usable event retained.", ticker=q.ticker)
+                continue
+            if previous and (q.data_timestamp < previous.data_timestamp or
+                             (q.data_timestamp == previous.data_timestamp and q.received_at < previous.received_at)):
+                self._alert("timestamp:" + q.ticker, "Out-of-order quote ignored; event time never moves backward.", "info", q.ticker)
+                continue
+            self.quotes[q.ticker] = q
 
     def _check_risk(self):
         held = {p["ticker"]: p for p in self._portfolio.get("positions", [])}
@@ -236,6 +308,13 @@ class MarketService:
                 kwargs = {"bundle": self.bundle,
                           "replay_start": pd.Timestamp(self.meta["asof"]) + pd.Timedelta(days=1)} if self.feed_name == "synthetic" else {}
                 self.feed = make_feed(self.feed_name, **kwargs)
+                if self.feed_name == "synthetic":
+                    self.feed.auto_advance = False
+                    last_update = self._portfolio.get("last_update")
+                    if last_update:
+                        if pd.Timestamp(last_update) > self.bundle.dates[-1]:
+                            raise SetupError("Saved paper ledger is beyond this replay dataset; use its original dataset")
+                        self.feed._cursor = max(self.feed._cursor, int(self.bundle.dates.searchsorted(pd.Timestamp(last_update))))
             self.status = "ready"
         except asyncio.CancelledError:
             raise
@@ -249,14 +328,15 @@ class MarketService:
         failures = 0
         while True:
             try:
-                tickers = sorted({r["ticker"] for r in self.rows} | self._position_tickers)
-                quotes = await asyncio.wait_for(self.feed.poll(tickers), timeout=30)
-                self.quotes.update({q.ticker: q for q in quotes})
-                self._last_poll, self.feed_error = utc_now().isoformat(), None
-                self.alerts.pop("feed", None)
-                failures = 0
-                self._portfolio = await asyncio.to_thread(self._read_portfolio)
-                await asyncio.to_thread(self._check_risk)
+                async with self.paper_lock:
+                    tickers = sorted({r["ticker"] for r in self.rows} | self._position_tickers)
+                    quotes = await asyncio.wait_for(self.feed.poll(tickers), timeout=30)
+                    self._accept_quotes(quotes)
+                    self._last_poll, self.feed_error = utc_now().isoformat(), None
+                    self.alerts.pop("feed", None)
+                    failures = 0
+                    self._portfolio = await asyncio.to_thread(self._read_portfolio)
+                    await asyncio.to_thread(self._check_risk)
                 if time.monotonic() - last_scan >= max(60, float(self.cfg.live.get("scan_seconds", 3600))):
                     if self.feed_name != "synthetic" and time.monotonic() - self._history_loaded >= float(self.cfg.live.get("history_refresh_seconds", 86400)):
                         self.bundle = await asyncio.to_thread(load_bundle, self.cfg, use_cache=False)

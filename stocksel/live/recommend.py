@@ -97,6 +97,11 @@ def recommend(cfg, asof: str | None = None, bundle=None, prev_weights: pd.Series
             "ref_close": round(float(close[t]), 2),
             "top3_signals_shap": tops.get(t, ""),
             "confidence": confidence_level(ph, float(cand.at[t, "prob_std"]), validated),
+            "sector": str(cand.at[t, "sector"]),
+            "adv_usd": float(a["adv"].loc[last].get(t, np.nan)),
+            "market_cap": float(cand.at[t, "mcap"]),
+            "data_quality": "synthetic" if data.meta.get("source") == "synthetic" else "verified_metadata" if data.meta.get("survivorship_free") else "limited",
+            "horizon_months": h,
         })
     out = pd.DataFrame(rows)
     meta = {"asof": str(asof_d.date()), "n_candidates": len(cand), "gross_exposure": float(w.sum()),
