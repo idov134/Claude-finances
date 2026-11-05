@@ -1,0 +1,66 @@
+{
+  "python": "3.12.14",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "packages": {
+    "numpy": {
+      "version": "2.5.4",
+      "license_metadata": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0"
+    },
+    "pandas": {
+      "version": "3.1.0",
+      "license_metadata": "BSD-3-Clause"
+    },
+    "scipy": {
+      "version": "1.18.1",
+      "license_metadata": "Copyright (c) 2001-2002 Enthought, Inc. 2003, SciPy Developers.\n All rights reserved.\n\n Redistribution and use in source and binary forms, with or without\n modification, are permit"
+    },
+    "scikit-learn": {
+      "version": "1.9.1",
+      "license_metadata": "BSD-3-Clause"
+    },
+    "lightgbm": {
+      "version": "4.7.0",
+      "license_metadata": "MIT"
+    },
+    "matplotlib": {
+      "version": "3.11.2",
+      "license_metadata": "License agreement for matplotlib versions 1.3.0 and later\n =========================================================\n\n 1. This LICENSE AGREEMENT is between the Matplotlib Developme"
+    },
+    "PyYAML": {
+      "version": "6.0.3",
+      "license_metadata": "MIT"
+    },
+    "joblib": {
+      "version": "1.6.0",
+      "license_metadata": "BSD-3-Clause"
+    },
+    "requests": {
+      "version": "2.34.2",
+      "license_metadata": "Apache-2.0"
+    },
+    "pytest": {
+      "version": "9.2.0",
+      "license_metadata": "MIT"
+    },
+    "fastapi": {
+      "version": "0.162.0",
+      "license_metadata": "MIT"
+    },
+    "uvicorn": {
+      "version": "0.54.0",
+      "license_metadata": "BSD-3-Clause"
+    },
+    "httpx": {
+      "version": "0.28.1",
+      "license_metadata": "BSD-3-Clause"
+    },
+    "websockets": {
+      "version": "17.4",
+      "license_metadata": "BSD-3-Clause"
+    },
+    "exchange-calendars": {
+      "version": "4.13.2",
+      "license_metadata": "Apache-2.0"
+    }
+  }
+}

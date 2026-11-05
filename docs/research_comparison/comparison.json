@@ -1,0 +1,1743 @@
+{
+  "protocol": "research_comparison_v1",
+  "synthetic_only": true,
+  "config_hash": "882fae5f0d64fd08",
+  "research_code_sha256": "b71e62b4799d11189fd43b44ab49b2d05d4a6023a87398639c990bd5f3913a39",
+  "dependency_versions": {
+    "numpy": "2.5.4",
+    "pandas": "3.1.0",
+    "scipy": "1.18.1",
+    "scikit-learn": "1.9.1"
+  },
+  "config_snapshot": {
+    "market": {
+      "name": "sp500",
+      "benchmark": "SPY",
+      "timezone": "America/New_York",
+      "close_time": "16:00"
+    },
+    "capital": {
+      "initial": 100000,
+      "max_drawdown": 0.2,
+      "currency": "USD"
+    },
+    "data": {
+      "provider": "synthetic",
+      "start": "1998-01-01",
+      "end": "2025-12-31",
+      "cache_dir": "artifacts/cache",
+      "csv_dir": "data_csv",
+      "membership_file": null,
+      "default_delisting_return": -0.3,
+      "pit_lag_days": 1,
+      "api_keys_env": {
+        "sharadar": "NASDAQ_DATA_LINK_API_KEY",
+        "polygon": "POLYGON_API_KEY",
+        "tiingo": "TIINGO_API_KEY"
+      },
+      "synthetic": {
+        "seed": 7,
+        "n_initial": 420,
+        "ipo_per_year": 22,
+        "annual_delist_prob": 0.035,
+        "alpha_scale": 1.0,
+        "post_2005_decay": 0.6,
+        "news_per_month": 1.2
+      }
+    },
+    "universe": {
+      "min_price": 5.0,
+      "min_market_cap": 2000000000.0,
+      "min_adv_usd": 10000000.0,
+      "exclude_bottom_mcap_pct": 0.1,
+      "min_history_days": 252,
+      "require_index_membership": true
+    },
+    "features": {
+      "winsor_pct": 0.01,
+      "normalize": "rank",
+      "sets": {
+        "core": [
+          "mom_12_1",
+          "mom_6_1",
+          "illiq",
+          "vol_252",
+          "idio_vol",
+          "size"
+        ],
+        "core_comp": [
+          "mom_12_1",
+          "mom_6_1",
+          "illiq",
+          "vol_252",
+          "idio_vol",
+          "size",
+          "rev_1m",
+          "value_bm",
+          "value_ep",
+          "quality_gpa",
+          "quality_roe",
+          "sue",
+          "pead",
+          "revisions"
+        ],
+        "all": [
+          "mom_12_1",
+          "mom_6_1",
+          "illiq",
+          "vol_252",
+          "idio_vol",
+          "size",
+          "rev_1m",
+          "value_bm",
+          "value_ep",
+          "quality_gpa",
+          "quality_roe",
+          "sue",
+          "pead",
+          "revisions",
+          "news_sent",
+          "regime_trend",
+          "regime_vol",
+          "regime_vix"
+        ]
+      },
+      "disabled": []
+    },
+    "signals": {
+      "haircut": 0.5,
+      "registry": {
+        "mom_12_1": {
+          "family": "momentum",
+          "published": true,
+          "year": 1993,
+          "ref": "Jegadeesh & Titman (1993)"
+        },
+        "mom_6_1": {
+          "family": "momentum",
+          "published": true,
+          "year": 1993,
+          "ref": "Jegadeesh & Titman (1993)"
+        },
+        "rev_1m": {
+          "family": "reversal",
+          "published": true,
+          "year": 1990,
+          "ref": "Jegadeesh (1990); Lehmann (1990)"
+        },
+        "illiq": {
+          "family": "liquidity",
+          "published": true,
+          "year": 2002,
+          "ref": "Amihud (2002)"
+        },
+        "vol_252": {
+          "family": "volatility",
+          "published": true,
+          "year": 2006,
+          "ref": "Ang, Hodrick, Xing & Zhang (2006); Baker et al. (2011)"
+        },
+        "idio_vol": {
+          "family": "volatility",
+          "published": true,
+          "year": 2006,
+          "ref": "Ang, Hodrick, Xing & Zhang (2006)"
+        },
+        "size": {
+          "family": "control",
+          "published": true,
+          "year": 1981,
+          "ref": "Banz (1981)"
+        },
+        "value_bm": {
+          "family": "value",
+          "published": true,
+          "year": 1992,
+          "ref": "Fama & French (1992)"
+        },
+        "value_ep": {
+          "family": "value",
+          "published": true,
+          "year": 1977,
+          "ref": "Basu (1977)"
+        },
+        "quality_gpa": {
+          "family": "quality",
+          "published": true,
+          "year": 2013,
+          "ref": "Novy-Marx (2013)"
+        },
+        "quality_roe": {
+          "family": "quality",
+          "published": true,
+          "year": 2015,
+          "ref": "Hou, Xue & Zhang (2015)"
+        },
+        "sue": {
+          "family": "earnings",
+          "published": true,
+          "year": 1989,
+          "ref": "Bernard & Thomas (1989)"
+        },
+        "pead": {
+          "family": "earnings",
+          "published": true,
+          "year": 1968,
+          "ref": "Ball & Brown (1968)"
+        },
+        "revisions": {
+          "family": "analyst",
+          "published": true,
+          "year": 1996,
+          "ref": "Chan, Jegadeesh & Lakonishok (1996)"
+        },
+        "news_sent": {
+          "family": "text",
+          "published": true,
+          "year": 2023,
+          "ref": "Tetlock (2007); Lopez-Lira & Tang (2023)"
+        },
+        "regime_trend": {
+          "family": "regime",
+          "published": true,
+          "year": 2007,
+          "ref": "Faber (2007)"
+        },
+        "regime_vol": {
+          "family": "regime",
+          "published": true,
+          "year": 2017,
+          "ref": "Moreira & Muir (2017)"
+        },
+        "regime_vix": {
+          "family": "regime",
+          "published": true,
+          "year": 2017,
+          "ref": "Moreira & Muir (2017)"
+        }
+      }
+    },
+    "news": {
+      "scorer": "lexicon",
+      "precomputed_file": null,
+      "llm": {
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "knowledge_cutoff": null,
+        "cache_file": "artifacts/cache/news_scores.jsonl",
+        "max_body_chars": 12000
+      },
+      "lookback_days": 21,
+      "rolling_sharpe_days": 252,
+      "target_sharpe": 1.0,
+      "min_obs": 126,
+      "daily": {
+        "holding_days": 2,
+        "top_frac": 0.1,
+        "cost_multiplier": 2.0
+      }
+    },
+    "labels": {
+      "horizon_months": 1,
+      "benchmark": "index",
+      "horizons_to_test": [
+        1,
+        3
+      ]
+    },
+    "models": {
+      "feature_set": "core_comp",
+      "baseline": "logit",
+      "candidates": [
+        "logit",
+        "ridge",
+        "enet",
+        "lgbm",
+        "mlp"
+      ],
+      "calibration": "platt",
+      "calibration_frac": 0.2,
+      "seed": 11,
+      "n_jobs": 4,
+      "params": {
+        "logit": {
+          "C": 0.05
+        },
+        "ridge": {
+          "alpha": 50.0
+        },
+        "enet": {
+          "C": 0.05,
+          "l1_ratio": 0.5
+        },
+        "lgbm": {
+          "n_estimators": 250,
+          "learning_rate": 0.03,
+          "num_leaves": 15,
+          "max_depth": 4,
+          "min_child_samples": 300,
+          "subsample": 0.7,
+          "colsample_bytree": 0.7,
+          "reg_lambda": 10.0
+        },
+        "mlp": {
+          "hidden_layer_sizes": [
+            32,
+            16
+          ],
+          "alpha": 0.01,
+          "max_iter": 40,
+          "learning_rate_init": 0.001
+        }
+      },
+      "gate": {
+        "min_prob_outperform": 0.8,
+        "block_size": 6
+      }
+    },
+    "validation": {
+      "walk_forward": {
+        "min_train_months": 60,
+        "train_window_months": 120,
+        "retrain_every_months": 12
+      },
+      "purged_kfold": {
+        "n_splits": 5,
+        "embargo_pct": 0.01
+      },
+      "cpcv": {
+        "n_groups": 6,
+        "n_test_groups": 2
+      },
+      "pbo": {
+        "n_blocks": 16,
+        "max_combinations": 5000
+      },
+      "holdout_months": 24,
+      "selection": "preregistered",
+      "bootstrap": {
+        "n": 2000,
+        "block": 6,
+        "seed": 3
+      },
+      "regimes": {
+        "dotcom_bust": [
+          "2000-03-01",
+          "2002-10-31"
+        ],
+        "gfc_2008": [
+          "2007-10-01",
+          "2009-03-31"
+        ],
+        "covid_2020": [
+          "2020-02-01",
+          "2020-06-30"
+        ],
+        "bear_2022": [
+          "2022-01-01",
+          "2022-12-31"
+        ]
+      },
+      "structural_break": "2005-01-01",
+      "influence_drop_frac": 0.001,
+      "red_flags": {
+        "max_accuracy": 0.65,
+        "max_sharpe": 2.0,
+        "min_dsr": 0.95,
+        "max_pbo": 0.5
+      }
+    },
+    "trials": {
+      "top_n": [
+        30,
+        50
+      ],
+      "buffer": [
+        true,
+        false
+      ],
+      "weighting": [
+        "capped_value"
+      ],
+      "regime_filter": [
+        false
+      ],
+      "feature_sets": [
+        "core",
+        "core_comp"
+      ],
+      "horizons": [
+        1
+      ]
+    },
+    "costs": {
+      "commission_bps": 1.0,
+      "min_half_spread_bps": 2.0,
+      "spread_k": 25.0,
+      "slippage_bps": 2.0,
+      "impact_k": 0.5
+    },
+    "portfolio": {
+      "top_n": 50,
+      "buffer": true,
+      "exit_rank_mult": 1.6,
+      "weighting": "capped_value",
+      "max_position": 0.05,
+      "max_sector": 0.3,
+      "max_gross": 1.0,
+      "kelly_fraction": 0.25,
+      "vol_target": null,
+      "vol_lookback_days": 126,
+      "min_prob": 0.5,
+      "min_position": 0.0,
+      "regime_filter": {
+        "enabled": false,
+        "scale": 0.5,
+        "vix_threshold": 30
+      },
+      "equal_weight_comparison": true
+    },
+    "execution": {
+      "entry": "next_open",
+      "atr_period": 14,
+      "atr_stop_mult": 4.0,
+      "trailing_atr_mult": 5.0,
+      "use_stops": true
+    },
+    "risk": {
+      "kill_switch": {
+        "drawdown": null,
+        "deviation_z": -2.0,
+        "min_live_months": 3,
+        "simulate_in_backtest": true,
+        "reentry": {
+          "enabled": false,
+          "cooldown_days": 21,
+          "trend_days": 126,
+          "recovery_fraction": 0.05
+        }
+      }
+    },
+    "live": {
+      "feed": "synthetic",
+      "poll_seconds": 5,
+      "scan_seconds": 3600,
+      "history_refresh_seconds": 86400,
+      "paper_min_months": 3,
+      "paper_recommended_months": 6,
+      "ledger_dir": "artifacts/paper",
+      "psi_alert": 0.25,
+      "decay_review_months": 36,
+      "dead_signal_tstat": 0.5
+    },
+    "report": {
+      "output_dir": "reports_out",
+      "title": "stocksel \u2014 research report"
+    },
+    "paths": {
+      "artifacts": "artifacts"
+    }
+  },
+  "research_input_sha256": "79372dbe60dd55b0adb0a3ced9510724e2593db12a5f84d27ca605a64325aecb",
+  "research_start": "1998-01-01",
+  "research_end": "2023-12-29",
+  "excluded_holdout_start": "2024-01-01",
+  "holdout_opened": false,
+  "folds": [
+    {
+      "predict_from": "2003-12-31",
+      "train_first_decision": "1998-12-31",
+      "train_last_decision": "2003-10-31",
+      "fit_rows": 16189,
+      "purging": "Training label end <= predict_from; fit labels strictly precede calibration start"
+    },
+    {
+      "predict_from": "2004-12-31",
+      "train_first_decision": "1998-12-31",
+      "train_last_decision": "2004-10-29",
+      "fit_rows": 18691,
+      "purging": "Training label end <= predict_from; fit labels strictly precede calibration start"
+    },
+    {
+      "predict_from": "2005-12-30",
+      "train_first_decision": "1998-12-31",
+      "train_last_decision": "2005-10-31",
+      "fit_rows": 21582,
+      "purging": "Training label end <= predict_from; fit labels strictly precede calibration start"
+    },
+    {
+      "predict_from": "2006-12-29",
+      "train_first_decision": "1998-12-31",
+      "train_last_decision": "2006-10-31",
+      "fit_rows": 24570,
+      "purging": "Training label end <= predict_from; fit labels strictly precede calibration start"
+    },
+    {
+      "predict_from": "2007-12-31",
+      "train_first_decision": "1998-12-31",
+      "train_last_decision": "2007-10-31",
+      "fit_rows": 27253,
+      "purging": "Training label end <= predict_from; fit labels strictly precede calibration start"
+    },
+    {
+      "predict_from": "2008-12-31",
+      "train_first_decision": "1998-12-31",
+      "train_last_decision": "2008-10-31",
+      "fit_rows": 30188,
+      "purging": "Training label end <= predict_from; fit labels strictly precede calibration start"
+    },
+    {
+      "predict_from": "2009-12-31",
+      "train_first_decision": "1999-12-31",
+      "train_last_decision": "2009-10-30",
+      "fit_rows": 29520,
+      "purging": "Training label end <= predict_from; fit labels strictly precede calibration start"
+    },
+    {
+      "predict_from": "2010-12-31",
+      "train_first_decision": "2000-12-29",
+      "train_last_decision": "2010-10-29",
+      "fit_rows": 28604,
+      "purging": "Training label end <= predict_from; fit labels strictly precede calibration start"
+    },
+    {
+      "predict_from": "2011-12-30",
+      "train_first_decision": "2001-12-31",
+      "train_last_decision": "2011-10-31",
+      "fit_rows": 27003,
+      "purging": "Training label end <= predict_from; fit labels strictly precede calibration start"
+    },
+    {
+      "predict_from": "2012-12-31",
+      "train_first_decision": "2002-12-31",
+      "train_last_decision": "2012-10-31",
+      "fit_rows": 26478,
+      "purging": "Training label end <= predict_from; fit labels strictly precede calibration start"
+    },
+    {
+      "predict_from": "2013-12-31",
+      "train_first_decision": "2003-12-31",
+      "train_last_decision": "2013-10-31",
+      "fit_rows": 26578,
+      "purging": "Training label end <= predict_from; fit labels strictly precede calibration start"
+    },
+    {
+      "predict_from": "2014-12-31",
+      "train_first_decision": "2004-12-31",
+      "train_last_decision": "2014-10-31",
+      "fit_rows": 26437,
+      "purging": "Training label end <= predict_from; fit labels strictly precede calibration start"
+    },
+    {
+      "predict_from": "2015-12-31",
+      "train_first_decision": "2005-12-30",
+      "train_last_decision": "2015-10-30",
+      "fit_rows": 26476,
+      "purging": "Training label end <= predict_from; fit labels strictly precede calibration start"
+    },
+    {
+      "predict_from": "2016-12-30",
+      "train_first_decision": "2006-12-29",
+      "train_last_decision": "2016-10-31",
+      "fit_rows": 26792,
+      "purging": "Training label end <= predict_from; fit labels strictly precede calibration start"
+    },
+    {
+      "predict_from": "2017-12-29",
+      "train_first_decision": "2007-12-31",
+      "train_last_decision": "2017-10-31",
+      "fit_rows": 27074,
+      "purging": "Training label end <= predict_from; fit labels strictly precede calibration start"
+    },
+    {
+      "predict_from": "2018-12-31",
+      "train_first_decision": "2008-12-31",
+      "train_last_decision": "2018-10-31",
+      "fit_rows": 27678,
+      "purging": "Training label end <= predict_from; fit labels strictly precede calibration start"
+    },
+    {
+      "predict_from": "2019-12-31",
+      "train_first_decision": "2009-12-31",
+      "train_last_decision": "2019-10-31",
+      "fit_rows": 29099,
+      "purging": "Training label end <= predict_from; fit labels strictly precede calibration start"
+    },
+    {
+      "predict_from": "2020-12-31",
+      "train_first_decision": "2010-12-31",
+      "train_last_decision": "2020-10-30",
+      "fit_rows": 30093,
+      "purging": "Training label end <= predict_from; fit labels strictly precede calibration start"
+    },
+    {
+      "predict_from": "2021-12-31",
+      "train_first_decision": "2011-12-30",
+      "train_last_decision": "2021-10-29",
+      "fit_rows": 30973,
+      "purging": "Training label end <= predict_from; fit labels strictly precede calibration start"
+    },
+    {
+      "predict_from": "2022-12-30",
+      "train_first_decision": "2012-12-31",
+      "train_last_decision": "2022-10-31",
+      "fit_rows": 32085,
+      "purging": "Training label end <= predict_from; fit labels strictly precede calibration start"
+    },
+    {
+      "predict_from": "2023-12-29",
+      "train_first_decision": "2013-12-31",
+      "train_last_decision": "2023-10-31",
+      "fit_rows": 33055,
+      "purging": "Training label end <= predict_from; fit labels strictly precede calibration start"
+    }
+  ],
+  "n_tickers": 1004,
+  "n_oos_predictions": 77493,
+  "new_configurations": 33,
+  "completed_configurations_this_run": 11,
+  "failed_attempt_records": 12,
+  "known_previous_attempts_at_least": 50,
+  "forecast": {
+    "n": 76729,
+    "accuracy": 0.5207157658773085,
+    "auc": 0.5237128352478837,
+    "log_loss": 0.6918269427443537,
+    "brier": 0.24934011961027627,
+    "base_rate": 0.48344172346831055,
+    "ic_mean": 0.047823380996625926,
+    "ic_tstat": 11.533959969731885,
+    "xs_r2": 0.006378746056745861,
+    "calibration": [
+      {
+        "bin": "(-0.001, 0.1]",
+        "n": 0,
+        "mean_probability": null,
+        "observed_fraction": null
+      },
+      {
+        "bin": "(0.1, 0.2]",
+        "n": 0,
+        "mean_probability": null,
+        "observed_fraction": null
+      },
+      {
+        "bin": "(0.2, 0.3]",
+        "n": 0,
+        "mean_probability": null,
+        "observed_fraction": null
+      },
+      {
+        "bin": "(0.3, 0.4]",
+        "n": 150,
+        "mean_probability": 0.3887462723252038,
+        "observed_fraction": 0.3933333333333333
+      },
+      {
+        "bin": "(0.4, 0.5]",
+        "n": 55586,
+        "mean_probability": 0.47487375699548956,
+        "observed_fraction": 0.4745619400568489
+      },
+      {
+        "bin": "(0.5, 0.6]",
+        "n": 20991,
+        "mean_probability": 0.5121231677080903,
+        "observed_fraction": 0.5075508551283884
+      },
+      {
+        "bin": "(0.6, 0.7]",
+        "n": 2,
+        "mean_probability": 0.6052452126725754,
+        "observed_fraction": 1.0
+      },
+      {
+        "bin": "(0.7, 0.8]",
+        "n": 0,
+        "mean_probability": null,
+        "observed_fraction": null
+      },
+      {
+        "bin": "(0.8, 0.9]",
+        "n": 0,
+        "mean_probability": null,
+        "observed_fraction": null
+      },
+      {
+        "bin": "(0.9, 1.0]",
+        "n": 0,
+        "mean_probability": null,
+        "observed_fraction": null
+      }
+    ],
+    "constant_half_probability": {
+      "n": 76729,
+      "accuracy": 0.5165582765316894,
+      "auc": 0.5,
+      "log_loss": 0.6931471805599453,
+      "brier": 0.25,
+      "base_rate": 0.48344172346831055
+    },
+    "event": "Next-open to next-month-rebalance-open stock return exceeds the same-window benchmark return",
+    "horizon_months": 1
+  },
+  "ranking": {
+    "current_logit": {
+      "ic_mean": 0.047823380996625926,
+      "ic_months": 239,
+      "quintiles_low_to_high": [
+        {
+          "bucket": 1,
+          "mean_monthly_return": 0.0019758788380730952,
+          "mean_monthly_excess": -0.006612008796727119,
+          "months": 239
+        },
+        {
+          "bucket": 2,
+          "mean_monthly_return": 0.005264481724224125,
+          "mean_monthly_excess": -0.00332340591057609,
+          "months": 239
+        },
+        {
+          "bucket": 3,
+          "mean_monthly_return": 0.008355915921326949,
+          "mean_monthly_excess": -0.00023197171347326783,
+          "months": 239
+        },
+        {
+          "bucket": 4,
+          "mean_monthly_return": 0.009532252371303578,
+          "mean_monthly_excess": 0.0009443647365033615,
+          "months": 239
+        },
+        {
+          "bucket": 5,
+          "mean_monthly_return": 0.015085887461545478,
+          "mean_monthly_excess": 0.006497999826745264,
+          "months": 239
+        }
+      ],
+      "definition": "Equal-weight forward returns within monthly score quintiles; gross of implementation costs."
+    },
+    "transparent_factor": {
+      "ic_mean": 0.028646342730091923,
+      "ic_months": 239,
+      "quintiles_low_to_high": [
+        {
+          "bucket": 1,
+          "mean_monthly_return": 0.004590523845578621,
+          "mean_monthly_excess": -0.003997363789221595,
+          "months": 239
+        },
+        {
+          "bucket": 2,
+          "mean_monthly_return": 0.007000331090755666,
+          "mean_monthly_excess": -0.001587556544044548,
+          "months": 239
+        },
+        {
+          "bucket": 3,
+          "mean_monthly_return": 0.008559636676461231,
+          "mean_monthly_excess": -2.8250958338982558e-05,
+          "months": 239
+        },
+        {
+          "bucket": 4,
+          "mean_monthly_return": 0.008678015454342061,
+          "mean_monthly_excess": 9.01278195418446e-05,
+          "months": 239
+        },
+        {
+          "bucket": 5,
+          "mean_monthly_return": 0.011435176309953006,
+          "mean_monthly_excess": 0.002847288675152792,
+          "months": 239
+        }
+      ],
+      "definition": "Equal-weight forward returns within monthly score quintiles; gross of implementation costs."
+    }
+  },
+  "investment": {
+    "current_logit_cost1": {
+      "n_periods": 239,
+      "cagr": 0.1207436173652181,
+      "bench_cagr": 0.09110161049228727,
+      "ann_vol": 0.10041364824311648,
+      "bench_vol": 0.17835027772447987,
+      "sharpe": 1.0433307750170426,
+      "sharpe_ci_low": 0.48936110131833405,
+      "sharpe_ci_high": 1.6025975044277962,
+      "bench_sharpe": 0.4958221684988346,
+      "psr_0": 0.9999967250606558,
+      "sortino": 1.8656266961548826,
+      "max_drawdown": -0.22614449454549979,
+      "bench_max_drawdown": -0.4690894975250778,
+      "calmar": 0.5339224269327713,
+      "bench_calmar": 0.19420944398231155,
+      "excess_ann": 0.01646278339257062,
+      "excess_ci_low": -0.044718611755569154,
+      "excess_ci_high": 0.06237426753726843,
+      "p_excess_positive": 0.784,
+      "tracking_error": 0.10633753199847364,
+      "information_ratio": 0.15481630129244417,
+      "capm_alpha": 0.06238642020221163,
+      "capm_beta": 0.48178861166707365,
+      "hit_rate_periods": 0.5732217573221757,
+      "avg_win_loss_ratio": 1.3970493832878252,
+      "expectancy_period": 0.009959786250847764,
+      "cumulative_return": 8.682777713240007,
+      "drawdown_duration_months": 28,
+      "turnover_ann": 8.020208270986423,
+      "cost_drag_ann": 0.005898431130323701,
+      "exposure_mean": 0.6733348813936535,
+      "maximum_position_weight": 0.05,
+      "maximum_sector_weight": 0.26019917657801295,
+      "herfindahl_mean": 0.012934459552955678,
+      "tail_fifth_percentile_month": -0.03918570067841734,
+      "worst_month": -0.061042242780701354,
+      "terminal_equity": 968277.7713240011,
+      "unfilled_entry_targets": 1,
+      "economics": {
+        "annual_fixed_cost_usd": 600.0,
+        "fixed_cost_is_illustrative_user_input": true,
+        "total_break_even_cost_bps_per_traded_dollar": 27.889771455512964,
+        "additional_break_even_cost_bps_per_traded_dollar": 20.52662828236732,
+        "capital_usd_to_cover_fixed_cost_if_point_estimate_persisted": 36445.841853861115,
+        "limitations": "Linear point-estimate scenario, not a viable-edge claim; taxes excluded and impact changes with capital.",
+        "positive_excess_ci": false,
+        "annual_fixed_cost_fraction_at_initial_capital": 0.006
+      },
+      "risk_matched_reference": {
+        "scale": 0.563013691507888,
+        "excess_ann": 0.055188293818992915,
+        "excess_ci_low": 0.022909867825657036,
+        "excess_ci_high": 0.07953779838106047,
+        "definition": "Ex-post full-window volatility scaling, cash remainder; descriptive, not tradable."
+      },
+      "subperiods": {
+        "pre_2008": {
+          "n_periods": 49,
+          "cagr": 0.09482903863593717,
+          "excess_ann": 0.06493573639236111,
+          "sharpe": 0.6046290108216754,
+          "max_drawdown": -0.06277748158318464
+        },
+        "gfc": {
+          "n_periods": 24,
+          "cagr": 0.02387011804226513,
+          "excess_ann": 0.01809748500761864,
+          "sharpe": 0.19760020425976568,
+          "max_drawdown": -0.17832926766804857
+        },
+        "2010s": {
+          "n_periods": 120,
+          "cagr": 0.1644588402822409,
+          "excess_ann": 0.03243889529930643,
+          "sharpe": 1.5980443305419718,
+          "max_drawdown": -0.08464400379208781
+        },
+        "2020s": {
+          "n_periods": 46,
+          "cagr": 0.09008935541850516,
+          "excess_ann": -0.07770115061958557,
+          "sharpe": 0.6684869187214534,
+          "max_drawdown": -0.17342427250517778
+        }
+      }
+    },
+    "current_logit_cost2": {
+      "n_periods": 239,
+      "cagr": 0.11424592310959203,
+      "bench_cagr": 0.09110161049228727,
+      "ann_vol": 0.10038936524448172,
+      "bench_vol": 0.17835027772447987,
+      "sharpe": 0.9853107433599362,
+      "sharpe_ci_low": 0.4303743933262577,
+      "sharpe_ci_high": 1.534689987260289,
+      "bench_sharpe": 0.4958221684988346,
+      "psr_0": 0.9999901986392749,
+      "sortino": 1.7362797599384587,
+      "max_drawdown": -0.22967490196652163,
+      "bench_max_drawdown": -0.4690894975250778,
+      "calmar": 0.4974244992874537,
+      "bench_calmar": 0.19420944398231155,
+      "excess_ann": 0.010594051615468805,
+      "excess_ci_low": -0.0502846840398219,
+      "excess_ci_high": 0.05663490071903648,
+      "p_excess_positive": 0.706,
+      "tracking_error": 0.10627466298198393,
+      "information_ratio": 0.09968558185185444,
+      "capm_alpha": 0.0565062547383697,
+      "capm_beta": 0.48191763164656615,
+      "hit_rate_periods": 0.5606694560669456,
+      "avg_win_loss_ratio": 1.3403441883764629,
+      "expectancy_period": 0.009470725269422615,
+      "cumulative_return": 7.623945172727922,
+      "drawdown_duration_months": 28,
+      "turnover_ann": 8.022307312214748,
+      "cost_drag_ann": 0.011758661729203371,
+      "exposure_mean": 0.6733303019322114,
+      "maximum_position_weight": 0.05,
+      "maximum_sector_weight": 0.26019917657801295,
+      "herfindahl_mean": 0.012934221844053085,
+      "tail_fifth_percentile_month": -0.03970724994847322,
+      "worst_month": -0.06135143766803194,
+      "terminal_equity": 862394.5172727923,
+      "unfilled_entry_targets": 1,
+      "economics": {
+        "annual_fixed_cost_usd": 600.0,
+        "fixed_cost_is_illustrative_user_input": true,
+        "total_break_even_cost_bps_per_traded_dollar": 27.880493940315247,
+        "additional_break_even_cost_bps_per_traded_dollar": 13.205741444656857,
+        "capital_usd_to_cover_fixed_cost_if_point_estimate_persisted": 56635.55566634352,
+        "limitations": "Linear point-estimate scenario, not a viable-edge claim; taxes excluded and impact changes with capital.",
+        "positive_excess_ci": false,
+        "annual_fixed_cost_fraction_at_initial_capital": 0.006
+      },
+      "risk_matched_reference": {
+        "scale": 0.5628775380970575,
+        "excess_ann": 0.04933162788978667,
+        "excess_ci_low": 0.01716922007274964,
+        "excess_ci_high": 0.07338164940322706,
+        "definition": "Ex-post full-window volatility scaling, cash remainder; descriptive, not tradable."
+      },
+      "subperiods": {
+        "pre_2008": {
+          "n_periods": 49,
+          "cagr": 0.08888045827400104,
+          "excess_ann": 0.059454303031440586,
+          "sharpe": 0.5504041618459787,
+          "max_drawdown": -0.06481484094492806
+        },
+        "gfc": {
+          "n_periods": 24,
+          "cagr": 0.01998833683307466,
+          "excess_ann": 0.014277996656555946,
+          "sharpe": 0.1597949309934037,
+          "max_drawdown": -0.18120661715025088
+        },
+        "2010s": {
+          "n_periods": 120,
+          "cagr": 0.15679209793868765,
+          "excess_ann": 0.025756002997948026,
+          "sharpe": 1.5270488631458572,
+          "max_drawdown": -0.08836710081771093
+        },
+        "2020s": {
+          "n_periods": 46,
+          "cagr": 0.08444352949922207,
+          "excess_ann": -0.08292771286857933,
+          "sharpe": 0.6220723468104042,
+          "max_drawdown": -0.17552542542125538
+        }
+      }
+    },
+    "current_logit_cost3": {
+      "n_periods": 239,
+      "cagr": 0.10782145355906358,
+      "bench_cagr": 0.09110161049228727,
+      "ann_vol": 0.10036910427304185,
+      "bench_vol": 0.17835027772447987,
+      "sharpe": 0.9275783940678116,
+      "sharpe_ci_low": 0.37176354502860987,
+      "sharpe_ci_high": 1.4671313992376442,
+      "bench_sharpe": 0.4958221684988346,
+      "psr_0": 0.9999721341521772,
+      "sortino": 1.611052815293809,
+      "max_drawdown": -0.23318500003211706,
+      "bench_max_drawdown": -0.4690894975250778,
+      "calmar": 0.4623858890761117,
+      "bench_calmar": 0.19420944398231155,
+      "excess_ann": 0.004760917318668131,
+      "excess_ci_low": -0.05580890078851173,
+      "excess_ci_high": 0.0510353109991195,
+      "p_excess_positive": 0.626,
+      "tracking_error": 0.10621462289465733,
+      "information_ratio": 0.04482355808380512,
+      "capm_alpha": 0.050661419883576385,
+      "capm_beta": 0.4820496630539818,
+      "hit_rate_periods": 0.5606694560669456,
+      "avg_win_loss_ratio": 1.3328970711795063,
+      "expectancy_period": 0.008984630744689227,
+      "cumulative_return": 6.685809405094209,
+      "drawdown_duration_months": 28,
+      "turnover_ann": 8.024405008972892,
+      "cost_drag_ann": 0.017583342172963923,
+      "exposure_mean": 0.6733257253804769,
+      "maximum_position_weight": 0.05,
+      "maximum_sector_weight": 0.26019917657801295,
+      "herfindahl_mean": 0.012933984417300528,
+      "tail_fifth_percentile_month": -0.04022263259194516,
+      "worst_month": -0.06165631388052627,
+      "terminal_equity": 768580.940509421,
+      "unfilled_entry_targets": 1,
+      "economics": {
+        "annual_fixed_cost_usd": 600.0,
+        "fixed_cost_is_illustrative_user_input": true,
+        "total_break_even_cost_bps_per_traded_dollar": 27.87122720258485,
+        "additional_break_even_cost_bps_per_traded_dollar": 5.933047139749891,
+        "capital_usd_to_cover_fixed_cost_if_point_estimate_persisted": 126026.13316709526,
+        "limitations": "Linear point-estimate scenario, not a viable-edge claim; taxes excluded and impact changes with capital.",
+        "positive_excess_ci": false,
+        "annual_fixed_cost_fraction_at_initial_capital": 0.006
+      },
+      "risk_matched_reference": {
+        "scale": 0.5627639359670337,
+        "excess_ann": 0.04350856095753544,
+        "excess_ci_low": 0.011516357915714325,
+        "excess_ci_high": 0.06739666362472109,
+        "definition": "Ex-post full-window volatility scaling, cash remainder; descriptive, not tradable."
+      },
+      "subperiods": {
+        "pre_2008": {
+          "n_periods": 49,
+          "cagr": 0.0829630135150301,
+          "excess_ann": 0.05397448704826061,
+          "sharpe": 0.49623727743885837,
+          "max_drawdown": -0.06684795278993194
+        },
+        "gfc": {
+          "n_periods": 24,
+          "cagr": 0.016126900417661627,
+          "excess_ann": 0.01046542885155527,
+          "sharpe": 0.12192827266904223,
+          "max_drawdown": -0.18407032585748107
+        },
+        "2010s": {
+          "n_periods": 120,
+          "cagr": 0.14921664448237615,
+          "excess_ann": 0.01911305268459315,
+          "sharpe": 1.4564587940868852,
+          "max_drawdown": -0.09367394509003368
+        },
+        "2020s": {
+          "n_periods": 46,
+          "cagr": 0.07890503275700822,
+          "excess_ann": -0.08807885306068679,
+          "sharpe": 0.576328969491952,
+          "max_drawdown": -0.17759355667129906
+        }
+      }
+    },
+    "transparent_factor_cost1": {
+      "n_periods": 239,
+      "cagr": 0.10935311241206547,
+      "bench_cagr": 0.09110161049228727,
+      "ann_vol": 0.10564611326653832,
+      "bench_vol": 0.17835027772447987,
+      "sharpe": 0.8995941836770082,
+      "sharpe_ci_low": 0.4055447033103335,
+      "sharpe_ci_high": 1.4038123189711567,
+      "bench_sharpe": 0.4958221684988346,
+      "psr_0": 0.9999508436207988,
+      "sortino": 1.5506245524983588,
+      "max_drawdown": -0.19790629495953815,
+      "bench_max_drawdown": -0.4690894975250778,
+      "calmar": 0.5525499450859946,
+      "bench_calmar": 0.19420944398231155,
+      "excess_ann": 0.006697329390909169,
+      "excess_ci_low": -0.0516892515836778,
+      "excess_ci_high": 0.053738248877482145,
+      "p_excess_positive": 0.644,
+      "tracking_error": 0.09941268801076962,
+      "information_ratio": 0.06736895988753096,
+      "capm_alpha": 0.04914335937941179,
+      "capm_beta": 0.5210306139137219,
+      "hit_rate_periods": 0.5481171548117155,
+      "avg_win_loss_ratio": 1.25553236245442,
+      "expectancy_period": 0.009145998417375978,
+      "cumulative_return": 6.900240388650365,
+      "drawdown_duration_months": 25,
+      "turnover_ann": 4.216204024328855,
+      "cost_drag_ann": 0.0032606216163981344,
+      "exposure_mean": 0.7634722601716163,
+      "maximum_position_weight": 0.019996284143015162,
+      "maximum_sector_weight": 0.29989523113493916,
+      "herfindahl_mean": 0.012277693121194842,
+      "tail_fifth_percentile_month": -0.04345267369596025,
+      "worst_month": -0.07646636954669413,
+      "terminal_equity": 790024.0388650362,
+      "unfilled_entry_targets": 0,
+      "economics": {
+        "annual_fixed_cost_usd": 600.0,
+        "fixed_cost_is_illustrative_user_input": true,
+        "total_break_even_cost_bps_per_traded_dollar": 23.627697757717105,
+        "additional_break_even_cost_bps_per_traded_dollar": 15.884737437428127,
+        "capital_usd_to_cover_fixed_cost_if_point_estimate_persisted": 89587.94841633874,
+        "limitations": "Linear point-estimate scenario, not a viable-edge claim; taxes excluded and impact changes with capital.",
+        "positive_excess_ci": false,
+        "annual_fixed_cost_fraction_at_initial_capital": 0.006
+      },
+      "risk_matched_reference": {
+        "scale": 0.5923518293015678,
+        "excess_ann": 0.04282290856332636,
+        "excess_ci_low": 0.013170022587568955,
+        "excess_ci_high": 0.06808768251682179,
+        "definition": "Ex-post full-window volatility scaling, cash remainder; descriptive, not tradable."
+      },
+      "subperiods": {
+        "pre_2008": {
+          "n_periods": 49,
+          "cagr": 0.08770870957873056,
+          "excess_ann": 0.05876882017976835,
+          "sharpe": 0.5228064033709321,
+          "max_drawdown": -0.07998934444432981
+        },
+        "gfc": {
+          "n_periods": 24,
+          "cagr": 0.031501627126824916,
+          "excess_ann": 0.02563336466638534,
+          "sharpe": 0.27077255028647673,
+          "max_drawdown": -0.14829892305850023
+        },
+        "2010s": {
+          "n_periods": 120,
+          "cagr": 0.14485942832464538,
+          "excess_ann": 0.015922603792730913,
+          "sharpe": 1.3299616511177628,
+          "max_drawdown": -0.1011307708288508
+        },
+        "2020s": {
+          "n_periods": 46,
+          "cagr": 0.08387418556421178,
+          "excess_ann": -0.08271573198918078,
+          "sharpe": 0.5886018275456733,
+          "max_drawdown": -0.19790629495953826
+        }
+      }
+    },
+    "transparent_factor_cost2": {
+      "n_periods": 239,
+      "cagr": 0.10577485222746508,
+      "bench_cagr": 0.09110161049228727,
+      "ann_vol": 0.10563919873017694,
+      "bench_vol": 0.17835027772447987,
+      "sharpe": 0.8689014328760492,
+      "sharpe_ci_low": 0.3743546580267096,
+      "sharpe_ci_high": 1.3708361758134504,
+      "bench_sharpe": 0.4958221684988346,
+      "psr_0": 0.9999175145026479,
+      "sortino": 1.48662940506624,
+      "max_drawdown": -0.20023186328135179,
+      "bench_max_drawdown": -0.4690894975250778,
+      "calmar": 0.5282618385208635,
+      "bench_calmar": 0.19420944398231155,
+      "excess_ann": 0.003439689220936755,
+      "excess_ci_low": -0.05487041610283941,
+      "excess_ci_high": 0.05041395344256536,
+      "p_excess_positive": 0.602,
+      "tracking_error": 0.09937860157075408,
+      "information_ratio": 0.03461197045007538,
+      "capm_alpha": 0.04587820742713313,
+      "capm_beta": 0.5211153783489496,
+      "hit_rate_periods": 0.5439330543933054,
+      "avg_win_loss_ratio": 1.2500401773808798,
+      "expectancy_period": 0.008874528403211613,
+      "cumulative_return": 6.407902974298789,
+      "drawdown_duration_months": 26,
+      "turnover_ann": 4.216646553046278,
+      "cost_drag_ann": 0.006510362801755914,
+      "exposure_mean": 0.7634465075024198,
+      "maximum_position_weight": 0.019992573447017787,
+      "maximum_sector_weight": 0.29979109183903074,
+      "herfindahl_mean": 0.01227666362342602,
+      "tail_fifth_percentile_month": -0.04360736462811233,
+      "worst_month": -0.07675941270765095,
+      "terminal_equity": 740790.2974298799,
+      "unfilled_entry_targets": 0,
+      "economics": {
+        "annual_fixed_cost_usd": 600.0,
+        "fixed_cost_is_illustrative_user_input": true,
+        "total_break_even_cost_bps_per_traded_dollar": 23.615863515092766,
+        "additional_break_even_cost_bps_per_traded_dollar": 8.15740465240508,
+        "capital_usd_to_cover_fixed_cost_if_point_estimate_persisted": 174434.36353142327,
+        "limitations": "Linear point-estimate scenario, not a viable-edge claim; taxes excluded and impact changes with capital.",
+        "positive_excess_ci": false,
+        "annual_fixed_cost_fraction_at_initial_capital": 0.006
+      },
+      "risk_matched_reference": {
+        "scale": 0.5923130598841629,
+        "excess_ann": 0.03956870411994025,
+        "excess_ci_low": 0.010147051523875579,
+        "excess_ci_high": 0.06459727693540311,
+        "definition": "Ex-post full-window volatility scaling, cash remainder; descriptive, not tradable."
+      },
+      "subperiods": {
+        "pre_2008": {
+          "n_periods": 49,
+          "cagr": 0.08418807890210767,
+          "excess_ann": 0.05550877724163037,
+          "sharpe": 0.49183685604265975,
+          "max_drawdown": -0.0809191328393638
+        },
+        "gfc": {
+          "n_periods": 24,
+          "cagr": 0.02950578430364348,
+          "excess_ann": 0.02369564529462166,
+          "sharpe": 0.2515140818336043,
+          "max_drawdown": -0.15032147908051896
+        },
+        "2010s": {
+          "n_periods": 120,
+          "cagr": 0.14079845094068077,
+          "excess_ann": 0.01233065885365841,
+          "sharpe": 1.294562520891371,
+          "max_drawdown": -0.10286368380668809
+        },
+        "2020s": {
+          "n_periods": 46,
+          "cagr": 0.08057115055056041,
+          "excess_ann": -0.0857873676205638,
+          "sharpe": 0.5629470542247683,
+          "max_drawdown": -0.20023186328135179
+        }
+      }
+    },
+    "transparent_factor_cost3": {
+      "n_periods": 239,
+      "cagr": 0.10221864715482831,
+      "bench_cagr": 0.09110161049228727,
+      "ann_vol": 0.10563325945053893,
+      "bench_vol": 0.17835027772447987,
+      "sharpe": 0.8382972985134709,
+      "sharpe_ci_low": 0.34347160682833205,
+      "sharpe_ci_high": 1.3406195029226493,
+      "bench_sharpe": 0.4958221684988346,
+      "psr_0": 0.9998636313714339,
+      "sortino": 1.4237030407970332,
+      "max_drawdown": -0.20253479378026917,
+      "bench_max_drawdown": -0.4690894975250778,
+      "calmar": 0.5046967251746667,
+      "bench_calmar": 0.19420944398231155,
+      "excess_ann": 0.00019263938857620426,
+      "excess_ci_low": -0.058039822061316436,
+      "excess_ci_high": 0.04709960372142265,
+      "p_excess_positive": 0.55,
+      "tracking_error": 0.09934534361027102,
+      "information_ratio": 0.001939088250899037,
+      "capm_alpha": 0.04262359397340061,
+      "capm_beta": 0.521200727746434,
+      "hit_rate_periods": 0.5355648535564853,
+      "avg_win_loss_ratio": 1.2226790590904046,
+      "expectancy_period": 0.008603940917181564,
+      "cumulative_return": 5.947567399829483,
+      "drawdown_duration_months": 26,
+      "turnover_ann": 4.21710013001848,
+      "cost_drag_ann": 0.00974966786869229,
+      "exposure_mean": 0.7634224481874096,
+      "maximum_position_weight": 0.01998886790684218,
+      "maximum_sector_weight": 0.29968755364636535,
+      "herfindahl_mean": 0.01227570214864226,
+      "tail_fifth_percentile_month": -0.04376130194154929,
+      "worst_month": -0.07705045224026714,
+      "terminal_equity": 694756.7399829482,
+      "unfilled_entry_targets": 0,
+      "economics": {
+        "annual_fixed_cost_usd": 600.0,
+        "fixed_cost_is_illustrative_user_input": true,
+        "total_break_even_cost_bps_per_traded_dollar": 23.604304175258566,
+        "additional_break_even_cost_bps_per_traded_dollar": 0.45680534641552395,
+        "capital_usd_to_cover_fixed_cost_if_point_estimate_persisted": 3114627.8257764094,
+        "limitations": "Linear point-estimate scenario, not a viable-edge claim; taxes excluded and impact changes with capital.",
+        "positive_excess_ci": false,
+        "annual_fixed_cost_fraction_at_initial_capital": 0.006
+      },
+      "risk_matched_reference": {
+        "scale": 0.5922797586764845,
+        "excess_ann": 0.036324605424125855,
+        "excess_ci_low": 0.007132836997125326,
+        "excess_ci_high": 0.06115055076935633,
+        "definition": "Ex-post full-window volatility scaling, cash remainder; descriptive, not tradable."
+      },
+      "subperiods": {
+        "pre_2008": {
+          "n_periods": 49,
+          "cagr": 0.08067908270227342,
+          "excess_ann": 0.05224992108995537,
+          "sharpe": 0.46089092619301636,
+          "max_drawdown": -0.08184812909045813
+        },
+        "gfc": {
+          "n_periods": 24,
+          "cagr": 0.027515207078544934,
+          "excess_ann": 0.021759659190073638,
+          "sharpe": 0.23228381936094966,
+          "max_drawdown": -0.1523380176874949
+        },
+        "2010s": {
+          "n_periods": 120,
+          "cagr": 0.13676357687136487,
+          "excess_ann": 0.008750232707733747,
+          "sharpe": 1.2592680118775585,
+          "max_drawdown": -0.10459180986859495
+        },
+        "2020s": {
+          "n_periods": 46,
+          "cagr": 0.07730162654748263,
+          "excess_ann": -0.08883619706582428,
+          "sharpe": 0.5374772084272117,
+          "max_drawdown": -0.2025347937802694
+        }
+      }
+    },
+    "equal_weight_cost1": {
+      "n_periods": 239,
+      "cagr": 0.06446274903057447,
+      "bench_cagr": 0.09110161049228727,
+      "ann_vol": 0.10040812604030631,
+      "bench_vol": 0.17835027772447987,
+      "sharpe": 0.5281741328643645,
+      "sharpe_ci_low": 0.010825308842160175,
+      "sharpe_ci_high": 1.0599480042498548,
+      "bench_sharpe": 0.4958221684988346,
+      "psr_0": 0.9894740790971923,
+      "sortino": 0.8221178316697175,
+      "max_drawdown": -0.23783708620993138,
+      "bench_max_drawdown": -0.4690894975250778,
+      "calmar": 0.27103741497099915,
+      "bench_calmar": 0.19420944398231155,
+      "excess_ann": -0.03540660907805319,
+      "excess_ci_low": -0.09594494674876525,
+      "excess_ci_high": 0.010668163349373493,
+      "p_excess_positive": 0.076,
+      "tracking_error": 0.09869866939879622,
+      "information_ratio": -0.3587344114538287,
+      "capm_alpha": 0.008335994786962474,
+      "capm_beta": 0.5063998181993251,
+      "hit_rate_periods": 0.4435146443514644,
+      "avg_win_loss_ratio": 1.1120835137295682,
+      "expectancy_period": 0.005637336878295783,
+      "cumulative_return": 2.470151894296757,
+      "drawdown_duration_months": 44,
+      "turnover_ann": 1.038787327790915,
+      "cost_drag_ann": 0.0007967541005759618,
+      "exposure_mean": 0.714182274621093,
+      "maximum_position_weight": 0.003401080391094161,
+      "maximum_sector_weight": 0.11942198759415124,
+      "herfindahl_mean": 0.0016951132563013714,
+      "tail_fifth_percentile_month": -0.04338168666527603,
+      "worst_month": -0.08162760245253978,
+      "terminal_equity": 347015.18942967575,
+      "unfilled_entry_targets": 11,
+      "economics": {
+        "annual_fixed_cost_usd": 600.0,
+        "fixed_cost_is_illustrative_user_input": true,
+        "total_break_even_cost_bps_per_traded_dollar": null,
+        "additional_break_even_cost_bps_per_traded_dollar": null,
+        "capital_usd_to_cover_fixed_cost_if_point_estimate_persisted": null,
+        "limitations": "Linear point-estimate scenario, not a viable-edge claim; taxes excluded and impact changes with capital.",
+        "positive_excess_ci": false,
+        "annual_fixed_cost_fraction_at_initial_capital": 0.006
+      },
+      "risk_matched_reference": {
+        "scale": 0.5629827288265813,
+        "excess_ann": 0.0033216452458653834,
+        "excess_ci_low": -0.02425937568815867,
+        "excess_ci_high": 0.02498941163614886,
+        "definition": "Ex-post full-window volatility scaling, cash remainder; descriptive, not tradable."
+      },
+      "subperiods": {
+        "pre_2008": {
+          "n_periods": 49,
+          "cagr": 0.031129864764338322,
+          "excess_ann": 0.004289461266047459,
+          "sharpe": 0.008023015473292799,
+          "max_drawdown": -0.07618538514457329
+        },
+        "gfc": {
+          "n_periods": 24,
+          "cagr": 0.008388629316113061,
+          "excess_ann": 0.0025406821165472396,
+          "sharpe": 0.04407858927782607,
+          "max_drawdown": -0.17845625621177785
+        },
+        "2010s": {
+          "n_periods": 120,
+          "cagr": 0.10719879082071104,
+          "excess_ann": -0.018400649912209226,
+          "sharpe": 1.0504368507105029,
+          "max_drawdown": -0.12017394444586915
+        },
+        "2020s": {
+          "n_periods": 46,
+          "cagr": 0.02215055743041483,
+          "excess_ann": -0.1418535120222405,
+          "sharpe": 0.09666808369523494,
+          "max_drawdown": -0.23783708620993138
+        }
+      }
+    },
+    "equal_weight_cost2": {
+      "n_periods": 239,
+      "cagr": 0.06361838418645083,
+      "bench_cagr": 0.09110161049228727,
+      "ann_vol": 0.10040233552662965,
+      "bench_vol": 0.17835027772447987,
+      "sharpe": 0.5202844506283377,
+      "sharpe_ci_low": 0.0029824511363434588,
+      "sharpe_ci_high": 1.0520339158661578,
+      "bench_sharpe": 0.4958221684988346,
+      "psr_0": 0.9884996168657811,
+      "sortino": 0.8083865952727454,
+      "max_drawdown": -0.23856972247689467,
+      "bench_max_drawdown": -0.4690894975250778,
+      "calmar": 0.26666579281707564,
+      "bench_calmar": 0.19420944398231155,
+      "excess_ann": -0.03620452154619064,
+      "excess_ci_low": -0.09671490721238346,
+      "excess_ci_high": 0.0098335758715323,
+      "p_excess_positive": 0.07,
+      "tracking_error": 0.09869955446502947,
+      "information_ratio": -0.3668154506109586,
+      "capm_alpha": 0.007539955842865799,
+      "capm_beta": 0.5063786769840013,
+      "hit_rate_periods": 0.4393305439330544,
+      "avg_win_loss_ratio": 1.1251131425738738,
+      "expectancy_period": 0.005570844172617662,
+      "cumulative_return": 2.4157380168670293,
+      "drawdown_duration_months": 44,
+      "turnover_ann": 1.0388383729391075,
+      "cost_drag_ann": 0.0015934039404781664,
+      "exposure_mean": 0.714180981383287,
+      "maximum_position_weight": 0.003400800358501038,
+      "maximum_sector_weight": 0.11942198759415124,
+      "herfindahl_mean": 0.001695105294709856,
+      "tail_fifth_percentile_month": -0.04342994163393458,
+      "worst_month": -0.08171146561462009,
+      "terminal_equity": 341573.8016867028,
+      "unfilled_entry_targets": 11,
+      "economics": {
+        "annual_fixed_cost_usd": 600.0,
+        "fixed_cost_is_illustrative_user_input": true,
+        "total_break_even_cost_bps_per_traded_dollar": null,
+        "additional_break_even_cost_bps_per_traded_dollar": null,
+        "capital_usd_to_cover_fixed_cost_if_point_estimate_persisted": null,
+        "limitations": "Linear point-estimate scenario, not a viable-edge claim; taxes excluded and impact changes with capital.",
+        "positive_excess_ci": false,
+        "annual_fixed_cost_fraction_at_initial_capital": 0.006
+      },
+      "risk_matched_reference": {
+        "scale": 0.5629502617413009,
+        "excess_ann": 0.002526609994759929,
+        "excess_ci_low": -0.025033292214241012,
+        "excess_ci_high": 0.024171683406451684,
+        "definition": "Ex-post full-window volatility scaling, cash remainder; descriptive, not tradable."
+      },
+      "subperiods": {
+        "pre_2008": {
+          "n_periods": 49,
+          "cagr": 0.030197620071450215,
+          "excess_ann": 0.0033817399967732862,
+          "sharpe": -0.0013524445345500311,
+          "max_drawdown": -0.07637228532285967
+        },
+        "gfc": {
+          "n_periods": 24,
+          "cagr": 0.007675953626453014,
+          "excess_ann": 0.0018331932849917874,
+          "sharpe": 0.03676789806904105,
+          "max_drawdown": -0.17912081400087
+        },
+        "2010s": {
+          "n_periods": 120,
+          "cagr": 0.10631228623440414,
+          "excess_ann": -0.019208701643028146,
+          "sharpe": 1.042054650246239,
+          "max_drawdown": -0.12056972477110617
+        },
+        "2020s": {
+          "n_periods": 46,
+          "cagr": 0.02143420822819242,
+          "excess_ann": -0.14255518154473648,
+          "sharpe": 0.09067223591036203,
+          "max_drawdown": -0.23856972247689456
+        }
+      }
+    },
+    "equal_weight_cost3": {
+      "n_periods": 239,
+      "cagr": 0.06277472631528647,
+      "bench_cagr": 0.09110161049228727,
+      "ann_vol": 0.10039669073125904,
+      "bench_vol": 0.17835027772447987,
+      "sharpe": 0.5123941284324741,
+      "sharpe_ci_low": -0.0048599836270190174,
+      "sharpe_ci_high": 1.0441191770012004,
+      "bench_sharpe": 0.4958221684988346,
+      "psr_0": 0.9874466930286699,
+      "sortino": 0.7947026781461498,
+      "max_drawdown": -0.23930140879796635,
+      "bench_max_drawdown": -0.4690894975250778,
+      "calmar": 0.2623249341932831,
+      "bench_calmar": 0.19420944398231155,
+      "excess_ann": -0.03700233178721968,
+      "excess_ci_low": -0.09748473260371687,
+      "excess_ci_high": 0.009000393019792809,
+      "p_excess_positive": 0.064,
+      "tracking_error": 0.09870059371649124,
+      "information_ratio": -0.3748947234654496,
+      "capm_alpha": 0.006744020565217487,
+      "capm_beta": 0.5063575195268811,
+      "hit_rate_periods": 0.4393305439330544,
+      "avg_win_loss_ratio": 1.1187402191419442,
+      "expectancy_period": 0.005504359985865242,
+      "cumulative_return": 2.3621797224473173,
+      "drawdown_duration_months": 44,
+      "turnover_ann": 1.0388897805187998,
+      "cost_drag_ann": 0.002389951736466415,
+      "exposure_mean": 0.7141796887235841,
+      "maximum_position_weight": 0.0034005204460488105,
+      "maximum_sector_weight": 0.11942198759415124,
+      "herfindahl_mean": 0.0016950973372890372,
+      "tail_fifth_percentile_month": -0.04347819933229358,
+      "worst_month": -0.08179530908439764,
+      "terminal_equity": 336217.97224473226,
+      "unfilled_entry_targets": 11,
+      "economics": {
+        "annual_fixed_cost_usd": 600.0,
+        "fixed_cost_is_illustrative_user_input": true,
+        "total_break_even_cost_bps_per_traded_dollar": null,
+        "additional_break_even_cost_bps_per_traded_dollar": null,
+        "capital_usd_to_cover_fixed_cost_if_point_estimate_persisted": null,
+        "limitations": "Linear point-estimate scenario, not a viable-edge claim; taxes excluded and impact changes with capital.",
+        "positive_excess_ci": false,
+        "annual_fixed_cost_fraction_at_initial_capital": 0.006
+      },
+      "risk_matched_reference": {
+        "scale": 0.5629186116903863,
+        "excess_ann": 0.0017316045655816762,
+        "excess_ci_low": -0.025807224615214792,
+        "excess_ci_high": 0.023353998131499885,
+        "definition": "Ex-post full-window volatility scaling, cash remainder; descriptive, not tradable."
+      },
+      "subperiods": {
+        "pre_2008": {
+          "n_periods": 49,
+          "cagr": 0.029265982529001366,
+          "excess_ann": 0.0024739109504936245,
+          "sharpe": -0.010731919027285914,
+          "max_drawdown": -0.07655917019777958
+        },
+        "gfc": {
+          "n_periods": 24,
+          "cagr": 0.006963745265484489,
+          "excess_ann": 0.001125712921583779,
+          "sharpe": 0.029456753230738902,
+          "max_drawdown": -0.17978485600152594
+        },
+        "2010s": {
+          "n_periods": 120,
+          "cagr": 0.10542656550484608,
+          "excess_ann": -0.02001662840132311,
+          "sharpe": 1.033672285211985,
+          "max_drawdown": -0.12096520186647275
+        },
+        "2020s": {
+          "n_periods": 46,
+          "cagr": 0.02071863649284711,
+          "excess_ann": -0.14325653555823753,
+          "sharpe": 0.08467931522921288,
+          "max_drawdown": -0.23930140879796624
+        }
+      }
+    },
+    "cash": {
+      "n_periods": 239,
+      "cagr": 0.014520017515693429,
+      "bench_cagr": 0.09110161049228727,
+      "ann_vol": 0.004678110147835146,
+      "bench_vol": 0.17835027772447987,
+      "sharpe": null,
+      "sharpe_ci_low": null,
+      "sharpe_ci_high": null,
+      "bench_sharpe": 0.4958221684988346,
+      "psr_0": null,
+      "sortino": null,
+      "max_drawdown": 0.0,
+      "bench_max_drawdown": -0.4690894975250778,
+      "calmar": null,
+      "bench_calmar": 0.19420944398231155,
+      "excess_ann": -0.08861950517408793,
+      "excess_ci_low": -0.17383030129761623,
+      "excess_ci_high": 0.004106072654392792,
+      "p_excess_positive": 0.03,
+      "tracking_error": 0.17873243837078698,
+      "information_ratio": -0.4958221684988346,
+      "capm_alpha": 0.0,
+      "capm_beta": 0.0,
+      "hit_rate_periods": 0.4435146443514644,
+      "avg_win_loss_ratio": null,
+      "expectancy_period": 0.0012029288702928875,
+      "cumulative_return": 0.3325720261968168,
+      "drawdown_duration_months": 0,
+      "turnover_ann": 0.0,
+      "cost_drag_ann": 0.0,
+      "exposure_mean": 0.0,
+      "maximum_position_weight": 0.0,
+      "maximum_sector_weight": 0.0,
+      "herfindahl_mean": 0.0,
+      "tail_fifth_percentile_month": 8.333333333333333e-05,
+      "worst_month": 8.333333333333333e-05,
+      "terminal_equity": 133257.2026196817,
+      "unfilled_entry_targets": 0,
+      "economics": {
+        "annual_fixed_cost_usd": 600.0,
+        "fixed_cost_is_illustrative_user_input": true,
+        "total_break_even_cost_bps_per_traded_dollar": null,
+        "additional_break_even_cost_bps_per_traded_dollar": null,
+        "capital_usd_to_cover_fixed_cost_if_point_estimate_persisted": null,
+        "limitations": "Linear point-estimate scenario, not a viable-edge claim; taxes excluded and impact changes with capital.",
+        "positive_excess_ci": false,
+        "annual_fixed_cost_fraction_at_initial_capital": 0.006
+      },
+      "risk_matched_reference": {
+        "scale": 0.026229901111014878,
+        "excess_ann": -0.002324480857223398,
+        "excess_ci_low": -0.004559551613134394,
+        "excess_ci_high": 0.00010770187967936557,
+        "definition": "Ex-post full-window volatility scaling, cash remainder; descriptive, not tradable."
+      },
+      "subperiods": {
+        "pre_2008": {
+          "n_periods": 49,
+          "cagr": 0.035031888910166176,
+          "excess_ann": 0.0035126644141730673,
+          "sharpe": null,
+          "max_drawdown": 0.0
+        },
+        "gfc": {
+          "n_periods": 24,
+          "cagr": 0.008531419970487564,
+          "excess_ann": -0.001724224099110487,
+          "sharpe": null,
+          "max_drawdown": 0.0
+        },
+        "2010s": {
+          "n_periods": 120,
+          "cagr": 0.006315802854603092,
+          "excess_ann": -0.11887489229513876,
+          "sharpe": null,
+          "max_drawdown": 0.0
+        },
+        "2020s": {
+          "n_periods": 46,
+          "cagr": 0.017515828401718725,
+          "excess_ann": -0.15316986606752586,
+          "sharpe": null,
+          "max_drawdown": 0.0
+        }
+      }
+    },
+    "synthetic_benchmark": {
+      "n_periods": 239,
+      "cagr": 0.09110161049228727,
+      "bench_cagr": 0.09110161049228727,
+      "ann_vol": 0.17835027772447987,
+      "bench_vol": 0.17835027772447987,
+      "sharpe": 0.4958221684988346,
+      "sharpe_ci_low": -0.02509386378405063,
+      "sharpe_ci_high": 1.0009109807984276,
+      "bench_sharpe": 0.4958221684988346,
+      "psr_0": 0.9880617058121725,
+      "sortino": 0.8111522490989896,
+      "max_drawdown": -0.4690894975250778,
+      "bench_max_drawdown": -0.4690894975250778,
+      "calmar": 0.19420944398231155,
+      "bench_calmar": 0.19420944398231155,
+      "excess_ann": 0.0,
+      "excess_ci_low": 0.0,
+      "excess_ci_high": 0.0,
+      "p_excess_positive": 0.0,
+      "tracking_error": 0.0,
+      "information_ratio": null,
+      "capm_alpha": 1.0408340855860843e-17,
+      "capm_beta": 0.9999999999999999,
+      "hit_rate_periods": 0.0,
+      "avg_win_loss_ratio": 1.1660840547564484,
+      "expectancy_period": 0.008587887634800217,
+      "cumulative_return": 4.677387052613663,
+      "drawdown_duration_months": 69,
+      "turnover_ann": 0.0,
+      "cost_drag_ann": 0.0,
+      "exposure_mean": 1.0,
+      "maximum_position_weight": 0.0,
+      "maximum_sector_weight": 0.0,
+      "herfindahl_mean": 0.0,
+      "tail_fifth_percentile_month": -0.06624676091390642,
+      "worst_month": -0.1971166363245691,
+      "terminal_equity": 567738.7052613663,
+      "unfilled_entry_targets": 0,
+      "economics": {
+        "annual_fixed_cost_usd": 600.0,
+        "fixed_cost_is_illustrative_user_input": true,
+        "total_break_even_cost_bps_per_traded_dollar": null,
+        "additional_break_even_cost_bps_per_traded_dollar": null,
+        "capital_usd_to_cover_fixed_cost_if_point_estimate_persisted": null,
+        "limitations": "Linear point-estimate scenario, not a viable-edge claim; taxes excluded and impact changes with capital.",
+        "positive_excess_ci": false,
+        "annual_fixed_cost_fraction_at_initial_capital": 0.006
+      },
+      "risk_matched_reference": {
+        "scale": 1.0,
+        "excess_ann": 3.2662157497471264e-20,
+        "excess_ci_low": -1.3064862998988506e-19,
+        "excess_ci_high": 2.6701313754182735e-19,
+        "definition": "Ex-post full-window volatility scaling, cash remainder; descriptive, not tradable."
+      },
+      "subperiods": {
+        "pre_2008": {
+          "n_periods": 49,
+          "cagr": 0.022509624326920274,
+          "excess_ann": 0.0,
+          "sharpe": -0.026292349692118293,
+          "max_drawdown": -0.10158790588620936
+        },
+        "gfc": {
+          "n_periods": 24,
+          "cagr": -0.019427928713431353,
+          "excess_ann": 0.0,
+          "sharpe": 0.007038097339867952,
+          "max_drawdown": -0.4090568170738822
+        },
+        "2010s": {
+          "n_periods": 120,
+          "cagr": 0.12404183882431075,
+          "excess_ann": 0.0,
+          "sharpe": 0.9546552832342886,
+          "max_drawdown": -0.151113556367228
+        },
+        "2020s": {
+          "n_periods": 46,
+          "cagr": 0.14394711278823547,
+          "excess_ann": 0.0,
+          "sharpe": 0.5535234811429133,
+          "max_drawdown": -0.3066337740955959
+        }
+      }
+    }
+  },
+  "current_matrix_pbo_diagnostic": {
+    "pbo": 0.0,
+    "n_trials": 11,
+    "n_periods": 239,
+    "n_combinations": 5000,
+    "median_oos_rank_of_is_best": 0.9166666666666666
+  },
+  "combined_dsr": null,
+  "combined_pbo": null,
+  "multiple_testing_limitation": "Original complete trial matrix absent; diagnostic subset PBO cannot certify improvement or promotion.",
+  "conventions": {
+    "currency": "USD",
+    "return_type": "synthetic adjusted total-return approximation",
+    "annualization": "12 equally weighted monthly open-to-open periods",
+    "risk_free": "synthetic annual rate at signal date / 12",
+    "drawdown": "month-end only; may understate intramonth loss",
+    "costs": "commission + spread + slippage + square-root impact on gross traded notional",
+    "benchmark": "Same-window synthetic cap-weighted index; frictionless, not a verified investable ETF",
+    "taxes": "not modeled",
+    "fixed_cost": "illustrative input separate from trading-cost returns",
+    "model": "current configured logit monthly selection; no daily stops/kill switch in this diagnostic"
+  },
+  "runtime_seconds": 102.2758654729987,
+  "decision": "No promotion: synthetic-only tooling comparison; retain current defaults."
+}
