@@ -13,8 +13,14 @@ from pathlib import Path
 
 import pandas as pd
 
+import numpy as np
+
 from ..config import load_config
+from ..data import load_bundle
+from ..data.universe import eligible
+from ..models.labels import forward_returns
 from ..pipeline import run_holdout, run_research
+from ..validation.metrics import performance_table
 from ..reports.html import write_report
 from ..validation.readiness import holdout_passed
 from .reentry import _clean_json
@@ -42,6 +48,31 @@ def pick(m: dict) -> dict:
     return {k: m.get(k) for k in KEYS}
 
 
+def universe_reference(cfg) -> pd.DataFrame:
+    """Cap- and equal-weighted return of every eligible stock (same survivor-only universe), frictionless."""
+    b = load_bundle(cfg)
+    dates = b.month_end_dates()
+    elig = eligible(b, cfg, dates)
+    lab = forward_returns(b, dates, 1, cfg.labels.benchmark, cfg.data.default_delisting_return, elig)
+    fwd = lab.fwd.where(elig)
+    w = b.market_cap.loc[dates].where(elig & fwd.notna())
+    out = pd.DataFrame({"universe_cw": (fwd * w).sum(axis=1) / w.sum(axis=1), "universe_ew": fwd.mean(axis=1),
+                        "spy": lab.bench, "n_eligible": elig.sum(axis=1)})
+    return out.replace([np.inf, -np.inf], np.nan)
+
+
+def vs_reference(monthly: pd.DataFrame, ref: pd.DataFrame) -> dict:
+    out = {}
+    for col in ("universe_cw", "universe_ew"):
+        j = pd.concat({"net": monthly["net"], "ref": ref[col], "rf": monthly["rf"]}, axis=1).dropna()
+        m = performance_table(j["net"], j["ref"], j["rf"], boot={"n": 2000, "block": 6, "seed": 3})
+        out[col] = {"ref_cagr": m["bench_cagr"], "excess_ann": m["excess_ann"], "excess_ci_low": m["excess_ci_low"],
+                    "excess_ci_high": m["excess_ci_high"], "p_excess_positive": m["p_excess_positive"],
+                    "information_ratio": m["information_ratio"], "ref_sharpe": m["bench_sharpe"],
+                    "ref_max_drawdown": m["bench_max_drawdown"], "months": m["n_periods"]}
+    return out
+
+
 def main(config: str = "config.yaml") -> dict:
     t0 = time.time()
     cfg = load_config(config, OVERRIDES)
@@ -55,6 +86,12 @@ def main(config: str = "config.yaml") -> dict:
     write_report(res, OUT / "research_report.html")
     hres = run_holdout(cfg, extra_portfolios=EXTRA)
     write_report(hres, OUT / "holdout_report.html")
+    ref = universe_reference(cfg)
+    ref.to_csv(OUT / "universe_reference_monthly.csv")
+    bias_matched = {"research": {"default": vs_reference(res["monthly"], ref),
+                                 **{k: vs_reference(v["monthly"], ref) for k, v in res["extra_portfolios"].items()}},
+                    "holdout": {"default": vs_reference(hres["monthly"], ref),
+                                **{k: vs_reference(v["monthly"], ref) for k, v in hres["extra_portfolios"].items()}}}
     info = json.loads((data_dir / "dataset_info.json").read_text())
     cov = pd.read_csv(data_dir / "coverage.csv")
     cov["share"] = cov["with_prices"] / cov["members"]
@@ -78,6 +115,7 @@ def main(config: str = "config.yaml") -> dict:
                     "extra": {k: pick(v["metrics"]) for k, v in hres["extra_portfolios"].items()},
                     "passed_readiness_gate": holdout_passed(hres, cfg), "lock": hres["lock"],
                     "red_flags": hres["red_flags"]},
+        "bias_matched_reference": bias_matched,
         "runtime_sec": time.time() - t0,
     }
     (OUT / "results.json").write_text(json.dumps(_clean_json(out), indent=2, default=str))

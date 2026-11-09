@@ -53,3 +53,16 @@ All success metrics (net return, DSR charged for this run's trials, drawdown/Cal
 excess and IR vs SPY with bootstrap CIs, then hit rate), the forecast diagnostics (AUC, IC,
 calibration), coverage statistics, and every red flag. Red flags (accuracy > 65%, Sharpe > 2)
 mean investigation, not celebration. No adoption decision is made from this run.
+
+## Addendum (9 Nov 2026, before the run)
+
+The dataset build showed the scale of the survivorship gap: 716 of 1,133 tickers that were ever
+members, with **45% coverage of index members in 1999 rising to 99% in 2026**. Every covered
+ticker still trades today. SPY therefore contains failures that the strategy's universe cannot
+hold, and "excess vs SPY" mixes skill with survivorship.
+
+A **bias-matched reference** is added to the report: the monthly return of **all eligible stocks**
+in the same survivor-only universe, cap-weighted and equal-weighted, frictionless, next open to
+next rebalance open. It is the same universe the model chooses from. Strategy minus this reference
+estimates **selection skill net of costs**, with the survivorship bias largely shared on both
+sides. It is a diagnostic benchmark only: nothing is selected or tuned with it.
