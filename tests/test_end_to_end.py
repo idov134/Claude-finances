@@ -25,7 +25,8 @@ def e2e(tmp_path_factory):
     })
     b = synthetic.generate(start="2002-01-01", end="2012-12-31", n_initial=110, ipo_per_year=5, seed=21)
     from stocksel.pipeline import run_research
-    res = run_research(cfg, bundle=b, quick=True)
+    res = run_research(cfg, bundle=b, quick=True,
+                       extra_portfolios={"relative": {"portfolio.mandate": "relative"}})
     return cfg, b, res
 
 
@@ -38,6 +39,15 @@ def test_research_outputs(e2e):
     assert res["monthly"].index.max() < res["hstart"]  # research never touches the holdout
     spec = json.loads((Path(cfg.paths.artifacts) / "final_spec.json").read_text())
     assert spec["members"][0] == "logit"
+
+
+def test_extra_portfolio_is_evaluated_and_logged(e2e):
+    cfg, b, res = e2e
+    rel = res["extra_portfolios"]["relative"]
+    assert rel["monthly"]["exposure"].median() > 0.95          # fully invested
+    assert res["monthly"]["exposure"].median() < rel["monthly"]["exposure"].median()
+    logged = [r for r in res["trial_records"] if r["config"].get("extra_portfolio") == "relative"]
+    assert logged and logged[-1]["status"] == "ok"             # counted as a trial
 
 
 def test_report_renders(e2e, tmp_path):

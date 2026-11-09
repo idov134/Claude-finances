@@ -56,7 +56,9 @@ def _trial_metrics(bt, rf_boot) -> dict:
     return m
 
 
-def run_research(cfg: Config, bundle=None, quick: bool = False) -> dict:
+def run_research(cfg: Config, bundle=None, quick: bool = False, extra_portfolios: dict | None = None) -> dict:
+    """``extra_portfolios``: {name: config overrides} — pre-registered alternative portfolio rules (e.g. a
+    relative mandate) evaluated on the same final predictions; each is logged as a trial."""
     t_start = time.time()
     art = Path(cfg.paths.artifacts)
     art.mkdir(parents=True, exist_ok=True)
@@ -124,8 +126,7 @@ def run_research(cfg: Config, bundle=None, quick: bool = False) -> dict:
                     except Exception as exc:  # failures are recorded, never hidden
                         reg.log(conf, None, None, status="failed", error=repr(exc))
             store[(h, fs)]["cls"] = cls
-    n_trials = reg.n_trials("research")
-    log(f"trial registry: {n_trials} distinct configurations (incl. earlier runs and failures)")
+    log(f"trial registry: {reg.n_trials('research')} distinct configurations (incl. earlier runs and failures)")
 
     # ------------------------------------------------------------ final (pre-registered) strategy
     key = (int(cfg.labels.horizon_months), cfg.models.feature_set)
@@ -143,6 +144,15 @@ def run_research(cfg: Config, bundle=None, quick: bool = False) -> dict:
     bt_ew = monthly_backtest(final_preds, panel, labels, data, cfg, SizingParams.from_cfg(cfg, keep, vt, weighting="equal"))
     bt_base = monthly_backtest(S["views"][cfg.models.baseline], panel, labels, data, cfg, prm)
     final_metrics = _trial_metrics(bt, boot)
+    extra_results = {}
+    for name, ov in (extra_portfolios or {}).items():
+        c2 = cfg.copy_with(ov)
+        b2 = monthly_backtest(final_preds, panel, labels, data, c2, SizingParams.from_cfg(c2, keep, vol_target(c2)),
+                              regime_filter=bool(c2.portfolio.regime_filter.enabled))
+        m2 = _trial_metrics(b2, boot)
+        reg.log({"model": final_model, "features": key[1], "horizon": int(key[0]), "extra_portfolio": name,
+                 "overrides": ov, "sections": shash}, (b2.net - b2.monthly["rf"]).rename(None), m2)
+        extra_results[name] = {"overrides": ov, "metrics": m2, "monthly": b2.monthly}
     rf_m = bt.monthly["rf"]
     sig_s, sig_b = bt.net.std(), bt.bench.std()
     bench_vm = rf_m + (bt.bench - rf_m) * (sig_s / sig_b if sig_b > 0 else 1)
@@ -161,6 +171,7 @@ def run_research(cfg: Config, bundle=None, quick: bool = False) -> dict:
         if len(eng.trades) else None), "spells": trade_stats(holding_spells(bt, labels))}
 
     # ------------------------------------------------------------ DSR / PBO over the full registry
+    n_trials = reg.n_trials("research")
     R = reg.returns()
     ids = {r["trial_id"] for r in reg.records("research") if r["status"] == "ok"}
     R = R[[c for c in R.columns if c in ids]]
@@ -293,7 +304,8 @@ def run_research(cfg: Config, bundle=None, quick: bool = False) -> dict:
         "survivorship_warning": data.survivorship_warning(), "spec": spec,
         "final_metrics": final_metrics, "vol_matched_metrics": vm_metrics, "engine_metrics": engine_metrics,
         "engine_no_kill_metrics": engine_nk_metrics, "cls": cls_final, "trade_stats": tstats,
-        "monthly": bt.monthly, "monthly_ew": bt_ew.monthly, "monthly_baseline": bt_base.monthly,
+        "monthly": bt.monthly, "monthly_ew": bt_ew.monthly, "extra_portfolios": extra_results,
+        "final_preds": final_preds, "monthly_baseline": bt_base.monthly,
         "engine_daily": eng.daily, "engine_trades": eng.trades, "kill_events": eng.kill_events,
         "engine_nk_daily": eng_nk.daily, "dsr": dsr, "dsr_eff": dsr_eff, "pbo": {k: v for k, v in pbo_res.items()},
         "n_trials": n_trials, "n_trials_this_run": n_trials_run, "history_charged": history_used, "n_eff": n_eff, "trial_returns": R, "trial_records": reg.records("research"),
@@ -317,7 +329,9 @@ def run_research(cfg: Config, bundle=None, quick: bool = False) -> dict:
     return result
 
 
-def run_holdout(cfg: Config, bundle=None, force: bool = False) -> dict:
+def run_holdout(cfg: Config, bundle=None, force: bool = False, extra_portfolios: dict | None = None) -> dict:
+    """Opens the holdout once. ``extra_portfolios`` must be the same pre-registered alternatives that were
+    evaluated in research; they are scored inside this single opening, never chosen after it."""
     art = Path(cfg.paths.artifacts)
     spec_path = art / "final_spec.json"
     if not spec_path.exists():
@@ -344,6 +358,14 @@ def run_holdout(cfg: Config, bundle=None, force: bool = False) -> dict:
     bt = monthly_backtest(preds, panel, labels, full, cfg, prm, regime_filter=cfg.portfolio.regime_filter.enabled)
     boot = dict(cfg.validation.bootstrap)
     met = _trial_metrics(bt, boot)
+    extra_results = {}
+    for name, ov in (extra_portfolios or {}).items():
+        c2 = cfg.copy_with(ov)
+        b2 = monthly_backtest(preds, panel, labels, full, c2,
+                              SizingParams.from_cfg(c2, spec["keep"], spec["vol_target"] if c2.portfolio.mandate == "absolute"
+                                                    else vol_target(c2)),
+                              regime_filter=bool(c2.portfolio.regime_filter.enabled))
+        extra_results[name] = {"overrides": ov, "metrics": _trial_metrics(b2, boot), "monthly": b2.monthly}
     Lp = L.reindex(preds.index)
     cls = classification_metrics(preds["prob"], Lp["y"], Lp["excess"], preds.index.get_level_values(0))
     eng = run_daily(full, bt.weights, cfg)
@@ -355,7 +377,7 @@ def run_holdout(cfg: Config, bundle=None, force: bool = False) -> dict:
     if len(bt.monthly) < 24:
         flags.append({"level": "warning", "message": f"holdout has only {len(bt.monthly)} months: wide uncertainty"})
     result = {"kind": "holdout", "config": cfg.to_dict(), "meta": full.meta, "hstart": hstart, "spec": spec, "lock": lock,
-              "final_metrics": met, "cls": cls, "monthly": bt.monthly, "engine_daily": eng.daily,
+              "final_metrics": met, "cls": cls, "monthly": bt.monthly, "extra_portfolios": extra_results, "engine_daily": eng.daily,
               "engine_trades": eng.trades, "kill_events": eng.kill_events, "dsr": dsr, "red_flags": flags,
               "survivorship_warning": full.survivorship_warning()}
     with (art / "holdout_result.pkl").open("wb") as fh:
