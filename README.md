@@ -1,5 +1,35 @@
 # stocksel — מערכת מחקר ספקנית לבחירת מניות
 
+## מה חדש בסבב 3 (Claude, נובמבר 2026)
+
+- **השוואה ל-Codex:** [`docs/CLAUDE_VS_CODEX.md`](docs/CLAUDE_VS_CODEX.md). מה כל אחד בנה, הבאגים ש-Codex מצא בקוד שלי, ומה נסגר עכשיו.
+- **מנוע המחקר יושר** לחשבונאות הקפדנית של Codex:
+  - עלויות משולמות מהמזומן
+  - הזמנה בלי פתיחה לא ממומשת
+  - אין החלפה של תשואה חסרה באפס
+  - המשקלים זזים לפי הון נטו
+- **היסטוריית כל הניסיונות** (`docs/research_history/`, `stocksel/validation/history.py`): DSR ו-PBO מחויבים כעת על כל הניסיונות שבוצעו על הנתונים האלה, כולל הניסויים של Codex.
+- **מחקר אלגוריתם עם רישום מראש** ואישור על עולמות סינתטיים חדשים: [v2](docs/algo_research_v2/RESULTS.md), [v3](docs/algo_research_v3/RESULTS.md).
+  - **מסקנות:** אף שינוי בבחירת המניות לא החזיק מעמד מחוץ לעולם הפיתוח. המנוף האמיתי מול "קנה והחזק" הוא רמת החשיפה לשוק. ברירות המחדל לא השתנו.
+- **אפשרויות חדשות בקונפיג.** כולן כבויות כברירת מחדל ונבדקו:
+
+| אפשרות | מה היא עושה |
+|---|---|
+| `features.neutralize: sector` | דירוג כל פיצ'ר בתוך הסקטור |
+| `models.feature_set: core_comp_resid` | מומנטום שיורי במקום מומנטום רגיל |
+| `labels.target: tails` | אימון על קצוות התשואה בלבד |
+| `portfolio.score_smoothing` | החלקת תחזיות בין חודשים |
+| `lgbm_tuned` | LightGBM מכוונן ב-CV מקונן |
+| `portfolio.mandate: relative` | השקעה מלאה. **ירידות בסדר גודל של המדד** |
+
+```bash
+python -m stocksel.experiments.algo_v2 dev && python -m stocksel.experiments.algo_v2 confirm   # מחקר v2 (חד-פעמי)
+python -m stocksel.experiments.algo_v3                                                        # מחקר v3 (חד-פעמי)
+python -m stocksel research                                                                   # מחקר מלא ← final_spec ל-GUI
+python -m stocksel app --demo                                                                 # ה-GUI של Codex
+```
+
+
 ## First working release: research to a recorded paper decision
 
 Start from branch `improvement/research-paper-v1` (based on GPT `14c95a0`).

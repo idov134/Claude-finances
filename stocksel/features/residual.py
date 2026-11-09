@@ -47,8 +47,10 @@ def residual_momentum(bundle: DataBundle, dates: pd.DatetimeIndex, window: int =
     S = np.full((T, N), np.nan)
     for s in np.unique(sec):
         cols = sec == s
-        with np.errstate(invalid="ignore"):
-            S[:, cols] = np.nanmean(R[:, cols], axis=1, keepdims=True) if cols.sum() else np.nan
+        valid_n = np.isfinite(R[:, cols]).sum(axis=1, keepdims=True)
+        total = np.nansum(R[:, cols], axis=1, keepdims=True)
+        # sector equal-weight return; months with no valid member stay NaN (no empty-slice warning)
+        S[:, cols] = np.where(valid_n > 0, total / np.maximum(valid_n, 1), np.nan)
     M = np.repeat(m[:, None], N, axis=1)
     valid = np.isfinite(R) & np.isfinite(S) & np.isfinite(M)
     Rv, Mv, Sv = np.where(valid, R, 0.0), np.where(valid, M, 0.0), np.where(valid, S, 0.0)
