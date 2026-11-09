@@ -121,7 +121,8 @@ class Evaluator:
         lab, L = self._labels(c, panel)
         preds, dec, feats = self._predictions(c, panel, lab, L)
         preds = smooth_predictions(preds, float(c.portfolio.get("score_smoothing", 0.0) or 0.0))
-        bt = monthly_backtest(preds, panel, lab, self.data, c, self._prm(c, feats))
+        bt = monthly_backtest(preds, panel, lab, self.data, c, self._prm(c, feats),
+                              regime_filter=bool(c.portfolio.regime_filter.enabled))
         m = bt.monthly
         perf = performance_table(m["net"], m["bench"], m["rf"], boot=BOOT)
         perf.update(turnover_ann=float(m["turnover"].mean() * 12), cost_drag_ann=float(m["cost"].mean() * 12),

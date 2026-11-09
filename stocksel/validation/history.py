@@ -20,6 +20,7 @@ SOURCES = [
     ("gpt_reentry_v1", "docs/reentry_review", "returns.csv", "calendar"),
     ("gpt_research_comparison_v1", "docs/research_comparison", "trial_returns.csv", "decision"),
     ("algo_research_v2", "docs/algo_research_v2", "returns.csv", "decision"),
+    ("algo_research_v3", "docs/algo_research_v3", "returns.csv", "decision"),
 ]
 
 

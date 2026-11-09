@@ -45,7 +45,8 @@ class LogitModel(BaseModel):
     def __init__(self, C=0.05, seed=0, l1_ratio=None):
         kw = dict(C=C, max_iter=2000)
         if l1_ratio is not None:
-            kw.update(solver="saga", l1_ratio=l1_ratio, tol=1e-3)
+            # saga shuffles the data: fix its seed so research runs are exactly reproducible
+            kw.update(solver="saga", l1_ratio=l1_ratio, tol=1e-3, random_state=seed)
             if _SKLEARN < (1, 8):  # older sklearn needs the explicit penalty name
                 kw["penalty"] = "elasticnet"
         self.m = LogisticRegression(**kw)
