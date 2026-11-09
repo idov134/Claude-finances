@@ -3,7 +3,7 @@ from __future__ import annotations
 
 
 def red_flags(final_metrics: dict, cls: dict, dsr: dict, pbo: dict, cfg, bundle_meta: dict,
-              sanity: dict | None = None) -> list[dict]:
+              sanity: dict | None = None, dsr_alpha: dict | None = None) -> list[dict]:
     rf = cfg.validation.red_flags
     out = []
 
@@ -20,6 +20,10 @@ def red_flags(final_metrics: dict, cls: dict, dsr: dict, pbo: dict, cfg, bundle_
     if d is None or d != d or d < rf.min_dsr:
         add("serious", f"DSR {d if d is None else round(d, 3)} < {rf.min_dsr}: not significant after "
                        f"{dsr.get('n_trials')} trials")
+    da = (dsr_alpha or {}).get("dsr")
+    if dsr_alpha is not None and (da is None or da != da or da < rf.min_dsr):
+        add("serious", f"Alpha DSR {da if da is None else round(da, 3)} < {rf.min_dsr}: no significant stock-selection "
+                       "skill once market exposure is removed (a positive Sharpe alone can come from holding equities)")
     p = pbo.get("pbo")
     if p is not None and p == p and p > rf.max_pbo:
         add("serious", f"PBO {p:.2f} > {rf.max_pbo}: the in-sample best trial tends to underperform out of sample")

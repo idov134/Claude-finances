@@ -16,11 +16,11 @@ from stocksel.web.service import MarketService
 
 def _evidence(cfg):
     meta = {"source": "csv", "survivorship_free": True, "pit_fundamentals": True}
-    spec = {"config_hash": cfg.hash(), "dsr": .99, "pbo": .1,
+    spec = {"config_hash": cfg.hash(), "dsr": .99, "dsr_alpha": .99, "pbo": .1,
             "holdout_passed": True, "validation_protocol": "real_pit_holdout_v1",
             "research_gate": {"full_validation": True, "sanity_passed": True, "blocking_flags": []}}
     result = {"meta": meta, "spec": spec, "final_metrics": {"n_periods": 24, "excess_ci_low": .01},
-              "dsr": {"dsr": .99}, "lock": {"contaminated": False}, "red_flags": []}
+              "dsr": {"dsr": .99}, "dsr_alpha": {"dsr": .99}, "lock": {"contaminated": False}, "red_flags": []}
     return meta, spec, result
 
 

@@ -22,7 +22,13 @@
 | `lgbm_tuned` | LightGBM מכוונן ב-CV מקונן |
 | `portfolio.mandate: relative` | השקעה מלאה. **ירידות בסדר גודל של המדד** |
 
+- **מבט ראשון על נתונים אמיתיים** ([תוצאות](docs/real_firstlook/RESULTS.md)): על מחירי S&P 500 אמיתיים (Yahoo, מוטה שורדים) **אין כושר חיזוי** מאותות מחיר בלבד, והמערכת **לא מכה את המדד**. ההרצה חשפה ותיקנה באג שווי שוק, וחשפה "בריחה למזומן" ([v4](docs/algo_research_v4/RESULTS.md); אפשרות `portfolio.prob_centering`, כבויה, עם התראה).
+- **Alpha DSR:** כישרון נמדד אחרי ניכוי החשיפה לשוק. שער המוכנות דורש אותו.
+
 ```bash
+python -m stocksel.data.build_yahoo_csv --out data_csv      # נתונים אמיתיים מקומיים (לא נשמרים בגיט)
+python -m stocksel.experiments.real_firstlook               # מבט ראשון (חד-פעמי; ה-holdout כבר נוצל)
+python -m stocksel.experiments.algo_v4                      # מחקר v4 (חד-פעמי)
 python -m stocksel.experiments.algo_v2 dev && python -m stocksel.experiments.algo_v2 confirm   # מחקר v2 (חד-פעמי)
 python -m stocksel.experiments.algo_v3                                                        # מחקר v3 (חד-פעמי)
 python -m stocksel research                                                                   # מחקר מלא ← final_spec ל-GUI

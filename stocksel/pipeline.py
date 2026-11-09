@@ -27,8 +27,8 @@ from .validation.cpcv import cpcv_path_predictions
 from .validation.history import load_history, trial_sharpes
 from .validation.kfold import purged_kfold_scores
 from .validation.holdout import HoldoutLock, assert_research_data, holdout_start
-from .validation.metrics import (classification_metrics, deflated_sharpe, effective_trials, performance_table,
-                                 sharpe)
+from .validation.metrics import (alpha_returns, classification_metrics, deflated_sharpe, effective_trials,
+                                 performance_table, sharpe)
 from .validation.pbo import pbo
 from .validation.redflags import red_flags
 from .validation.trials import TrialRegistry
@@ -186,11 +186,21 @@ def run_research(cfg: Config, bundle=None, quick: bool = False, extra_portfolios
         R = HR.dropna(axis=1, how="all")
         srs = trial_sharpes(R.dropna(axis=0, how="any")) if len(R) else srs
     dsr = deflated_sharpe((bt.net - rf_m).to_numpy(), n_trials, srs)
+    # Skill test: the same deflation on beta-adjusted returns (appraisal ratio). A long-only strategy
+    # earns a positive Sharpe from market exposure alone; this one only rewards stock selection.
+    b_ex = bt.bench - rf_m
+    RA = R.apply(lambda col: alpha_returns(col, b_ex.reindex(col.index))) if len(R.columns) else R
+    dsr_alpha = deflated_sharpe(alpha_returns(bt.net - rf_m, b_ex).to_numpy(), n_trials,
+                                trial_sharpes(RA.dropna(axis=0, how="any")) if len(RA.columns) else srs)
     pbo_res = pbo(R.dropna(axis=0, how="any") if history_used else R,
                   int(cfg.validation.pbo.n_blocks), int(cfg.validation.pbo.max_combinations))
     n_eff = effective_trials(R) if R.shape[1] > 1 else 1.0
     dsr_eff = deflated_sharpe((bt.net - rf_m).to_numpy(), max(2, int(round(n_eff))), srs)
-    log(f"DSR={dsr['dsr']:.3f} (N={n_trials}{' incl. full history' if history_used else ''}, "
+    RA_ok = RA.dropna(axis=0, how="any") if len(RA.columns) else RA
+    n_eff_alpha = effective_trials(RA_ok) if RA_ok.shape[1] > 1 else 1.0
+    dsr_alpha_eff = deflated_sharpe(alpha_returns(bt.net - rf_m, b_ex).to_numpy(), max(2, int(round(n_eff_alpha))),
+                                    trial_sharpes(RA_ok) if len(RA_ok.columns) else srs)
+    log(f"DSR={dsr['dsr']:.3f}, alpha-DSR={dsr_alpha['dsr']:.3f} (N={n_trials}{' incl. full history' if history_used else ''}, "
         f"this run {n_trials_run}, N_eff={n_eff:.1f}) PBO={pbo_res['pbo']:.2f}")
 
     # ------------------------------------------------------------ sanity
@@ -286,11 +296,11 @@ def run_research(cfg: Config, bundle=None, quick: bool = False, extra_portfolios
                          include_groups=False),
                      "weight": panel.news_weight})
 
-    flags = red_flags(final_metrics, cls_final, dsr, pbo_res, cfg, data.meta, san)
+    flags = red_flags(final_metrics, cls_final, dsr, pbo_res, cfg, data.meta, san, dsr_alpha=dsr_alpha)
     spec = {"config_hash": cfg.hash(), "sections_hash": shash, "feature_set": key[1], "horizon": key[0],
             "model": final_model, "members": members, "features": list(X.columns), "keep": keep,
             "keep_importance": keep_imp, "vol_target": vt, "research_end": str(data.dates[-1].date()),
-            "holdout_start": str(hstart.date()), "dsr": dsr["dsr"], "pbo": pbo_res["pbo"],
+            "holdout_start": str(hstart.date()), "dsr": dsr["dsr"], "dsr_alpha": dsr_alpha["dsr"], "pbo": pbo_res["pbo"],
             "created": time.strftime("%Y-%m-%dT%H:%M:%S")}
     spec["research_gate"] = {
         "full_validation": not quick,
@@ -307,7 +317,8 @@ def run_research(cfg: Config, bundle=None, quick: bool = False, extra_portfolios
         "monthly": bt.monthly, "monthly_ew": bt_ew.monthly, "extra_portfolios": extra_results,
         "final_preds": final_preds, "monthly_baseline": bt_base.monthly,
         "engine_daily": eng.daily, "engine_trades": eng.trades, "kill_events": eng.kill_events,
-        "engine_nk_daily": eng_nk.daily, "dsr": dsr, "dsr_eff": dsr_eff, "pbo": {k: v for k, v in pbo_res.items()},
+        "engine_nk_daily": eng_nk.daily, "dsr": dsr, "dsr_alpha": dsr_alpha, "dsr_alpha_eff": dsr_alpha_eff, "n_eff_alpha": n_eff_alpha,
+        "dsr_eff": dsr_eff, "pbo": {k: v for k, v in pbo_res.items()},
         "n_trials": n_trials, "n_trials_this_run": n_trials_run, "history_charged": history_used, "n_eff": n_eff, "trial_returns": R, "trial_records": reg.records("research"),
         "model_cls": {f"{k[1]}|h{k[0]}": v["cls"] for k, v in store.items()},
         "gate": {str(k.date()): v for k, v in S["decisions"].items()}, "sanity": san, "sensitivity": sens,
@@ -371,14 +382,19 @@ def run_holdout(cfg: Config, bundle=None, force: bool = False, extra_portfolios:
     eng = run_daily(full, bt.weights, cfg)
     reg = TrialRegistry(art / "trials", stage="research")
     dsr = deflated_sharpe((bt.net - bt.monthly["rf"]).to_numpy(), max(1, reg.n_trials("research")), reg.trial_sharpes())
-    flags = red_flags(met, cls, dsr, {"pbo": spec.get("pbo")}, cfg, full.meta)
+    b_ex = bt.bench - bt.monthly["rf"]
+    RA = reg.returns().apply(lambda col: alpha_returns(col, b_ex.reindex(col.index)))
+    dsr_alpha = deflated_sharpe(alpha_returns(bt.net - bt.monthly["rf"], b_ex).to_numpy(),
+                                max(1, reg.n_trials("research")), trial_sharpes(RA.dropna(axis=1, how="all")))
+    flags = red_flags(met, cls, dsr, {"pbo": spec.get("pbo")}, cfg, full.meta, dsr_alpha=dsr_alpha)
     if lock["contaminated"]:
         flags.insert(0, {"level": "critical", "message": f"HOLDOUT CONTAMINATED: opened {lock['n_opens']} times"})
     if len(bt.monthly) < 24:
         flags.append({"level": "warning", "message": f"holdout has only {len(bt.monthly)} months: wide uncertainty"})
     result = {"kind": "holdout", "config": cfg.to_dict(), "meta": full.meta, "hstart": hstart, "spec": spec, "lock": lock,
               "final_metrics": met, "cls": cls, "monthly": bt.monthly, "extra_portfolios": extra_results, "engine_daily": eng.daily,
-              "engine_trades": eng.trades, "kill_events": eng.kill_events, "dsr": dsr, "red_flags": flags,
+              "engine_trades": eng.trades, "kill_events": eng.kill_events, "dsr": dsr, "dsr_alpha": dsr_alpha,
+              "red_flags": flags,
               "survivorship_warning": full.survivorship_warning()}
     with (art / "holdout_result.pkl").open("wb") as fh:
         pickle.dump(result, fh)

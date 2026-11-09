@@ -129,6 +129,22 @@ def deflated_sharpe(r, n_trials: int, trial_sharpes_period: np.ndarray | None = 
             "n_trials": int(n_trials), "var_sr": var_sr}
 
 
+def alpha_returns(r_ex, b_ex) -> pd.Series:
+    """Beta-adjusted (CAPM alpha + residual) returns: r_ex - beta * b_ex, beta estimated on the overlap.
+
+    Both inputs are returns in excess of the risk-free rate. The Sharpe ratio of the result is the
+    appraisal ratio: reward per unit of risk the strategy took *beyond* its market exposure. For a
+    long-only strategy this separates stock-selection skill from simply holding equities.
+    """
+    r = pd.Series(r_ex, dtype=float)
+    b = pd.Series(b_ex, dtype=float).reindex(r.index)
+    m = r.notna() & b.notna()
+    if m.sum() < 6 or b[m].var() == 0:
+        return r * np.nan
+    beta = np.cov(r[m], b[m])[0, 1] / np.var(b[m], ddof=1)
+    return r - beta * b
+
+
 def effective_trials(returns: pd.DataFrame) -> float:
     """Effective number of independent trials from the eigenvalues of the trial correlation matrix."""
     R = returns.dropna(axis=1, how="all")

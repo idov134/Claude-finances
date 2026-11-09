@@ -274,6 +274,7 @@ def write_report(res: dict, path: str | Path, recommendations: pd.DataFrame | No
                  + kpi("Net excess vs benchmark (ann.)", _f(m.get("excess_ann"), "pct"))
                  + kpi("Sharpe (net)", _f(m.get("sharpe")))
                  + kpi(f"DSR (N={dsr.get('n_trials')})", _f(dsr.get("dsr")))
+                 + kpi("Alpha DSR (skill beyond market exposure)", _f((res.get("dsr_alpha") or {}).get("dsr")))
                  + kpi("PBO", _f(res.get("pbo", {}).get("pbo")))
                  + kpi("Max drawdown", _f(m.get("max_drawdown"), "pct")) + "</div>")
     parts.append(flags_html(res.get("red_flags", [])))
@@ -330,6 +331,12 @@ def write_report(res: dict, path: str | Path, recommendations: pd.DataFrame | No
             parts.append(chart_hist(pbo_["logits"], {"0": 0.0}, "logit of OOS relative rank of the IS-best trial"))
         if res.get("dsr_eff"):
             parts.append(f"<p class='muted'>DSR using the effective number of trials: {_f(res['dsr_eff'].get('dsr'))}</p>")
+        if res.get("dsr_alpha"):
+            parts.append("<p>Alpha DSR deflates the <b>beta-adjusted</b> returns (appraisal ratio): a long-only strategy "
+                         "earns a positive Sharpe from holding equities alone, so this is the test of stock-selection "
+                         f"skill. All {res['n_trials']} trials: <b>{_f(res['dsr_alpha'].get('dsr'))}</b>; effective "
+                         f"number of independent trials ({_f(res.get('n_eff_alpha'))}): "
+                         f"<b>{_f((res.get('dsr_alpha_eff') or {}).get('dsr'))}</b>. The truth lies between the two.</p>")
         recs = res.get("trial_records", [])
         if recs:
             rows = [{**{k: r["config"].get(k) for k in ("model", "features", "horizon", "top_n", "buffer", "weighting",

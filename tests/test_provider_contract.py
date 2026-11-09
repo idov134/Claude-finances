@@ -6,7 +6,7 @@ from stocksel.validation.readiness import system_validated
 
 def test_polygon_price_adapter_cannot_certify_real_data_readiness(cfg):
     meta = PolygonProvider(cfg).meta()
-    spec = {"config_hash": cfg.hash(), "dsr": .99, "pbo": .01,
+    spec = {"config_hash": cfg.hash(), "dsr": .99, "dsr_alpha": .99, "pbo": .01,
             "holdout_passed": True, "validation_protocol": "real_pit_holdout_v1",
             "research_gate": {"full_validation": True, "sanity_passed": True, "blocking_flags": []}}
     assert meta["survivorship_free"] is False

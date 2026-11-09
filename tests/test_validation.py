@@ -69,3 +69,13 @@ def test_walk_forward_schedule_monotone():
     s = walk_forward_schedule(d, 36, 60, 12)
     assert s[0][1] == d[36] and all(a[1] < b[1] for a, b in zip(s, s[1:]))
     assert all(start >= R - pd.DateOffset(months=61) for start, R, _ in s)
+
+
+def test_alpha_returns_remove_market_exposure():
+    from stocksel.validation.metrics import alpha_returns
+    rng = np.random.default_rng(0)
+    b = pd.Series(rng.normal(0.007, 0.045, 240))
+    no_skill = 0.6 * b + rng.normal(0, 0.01, 240)               # pure beta: positive Sharpe, no alpha
+    skill = 0.6 * b + 0.004 + rng.normal(0, 0.01, 240)
+    assert sharpe(no_skill) > 0.2                                  # positive Sharpe from beta alone
+    assert abs(sharpe(alpha_returns(no_skill, b))) < 0.5 < sharpe(alpha_returns(skill, b))
