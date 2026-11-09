@@ -91,10 +91,13 @@ def _spread(diff: np.ndarray, rows: np.ndarray, cols: np.ndarray, amount: np.nda
 def generate(start="1998-01-01", end="2025-12-31", seed=7, n_initial=420, ipo_per_year=22,
              annual_delist_prob=0.035, alpha_scale=1.0, post_2005_decay=0.6, news_per_month=1.2,
              timezone="America/New_York", with_news=True, anchor_market=True,
-             interaction: float = 0.0) -> DataBundle:
+             interaction: float = 0.0, breadth: float = 0.0) -> DataBundle:
     """``interaction`` > 0 plants one nonlinear effect for diagnostics only: the momentum premium
     is scaled by (1 + interaction * tanh(-z_idio_vol)) — strong in low-volatility names, weak in
-    volatile ones (same average). 0 (default) reproduces the standard world exactly."""
+    volatile ones (same average). ``breadth`` > 0 adds mega-cap regimes for diagnostics: in persistent
+    "concentration" spells (~40% of months) a 1-sigma larger stock earns breadth x 12%/yr more, and
+    breadth x 8%/yr less otherwise, so most stocks lag the cap-weighted index in those spells.
+    Both 0 (default) reproduce the standard world exactly (separate random stream)."""
     rng = np.random.default_rng(seed)
     dates = pd.bdate_range(start, end)
     T = len(dates)
@@ -276,6 +279,13 @@ def generate(start="1998-01-01", end="2025-12-31", seed=7, n_initial=420, ipo_pe
     run = np.zeros(M)
     starts = np.r_[0, np.where(np.diff(month_id))[0] + 1]
     ends = np.r_[starts[1:], T]
+    conc = np.zeros(len(starts), bool)
+    if breadth:
+        brng = np.random.default_rng(seed + 9_999)     # separate stream: the default world is unchanged
+        state = False
+        for k in range(len(starts)):
+            state = (brng.random() < 0.93) if state else (brng.random() < 0.05)
+            conc[k] = state
     for m, (s0, e0) in enumerate(zip(starts, ends)):
         if s0 == 0:
             w = mcap0 ** CAP_POWER * alive[0]
@@ -287,6 +297,11 @@ def generate(start="1998-01-01", end="2025-12-31", seed=7, n_initial=420, ipo_pe
         wa = w * al
         a_dm = a - (wa @ a) / wa.sum() if wa.sum() > 0 else a - a[al].mean()
         pa = (a_dm / 252)[None, :] * decay_d[s0:e0][:, None]
+        if breadth and wa.sum() > 0:
+            lc = np.log(np.where(wa > 0, wa, np.nan))
+            zc = np.nan_to_num((lc - np.nanmean(lc)) / (np.nanstd(lc) or 1.0))
+            g = breadth * (0.12 if conc[m] else -0.08) / 252
+            pa = pa + g * zc[None, :]
         persist[s0:e0] = pa
         r = np.clip(ret[s0:e0] + pa, -0.9, 3.0)
         r[~alive[s0:e0]] = np.nan

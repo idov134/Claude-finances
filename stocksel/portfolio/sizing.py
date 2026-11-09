@@ -38,6 +38,7 @@ class SizingParams:
     min_prob: float = 0.5
     regime_scale: float = 1.0          # < 1 in risk-off when the regime filter is on
     mandate: str = "absolute"          # absolute: Kelly caps + vol target | relative: fully invested
+    prob_centering: str = "none"       # none | cross_section (remove the month's base rate before sizing)
 
     @classmethod
     def from_cfg(cls, cfg, keep: float, vol_target: float, **over):
@@ -45,7 +46,8 @@ class SizingParams:
         kw = dict(top_n=p.top_n, buffer=p.buffer, exit_rank_mult=p.exit_rank_mult, weighting=p.weighting,
                   max_position=p.max_position, max_sector=p.max_sector, max_gross=p.max_gross,
                   kelly_fraction=min(0.25, p.kelly_fraction), keep=keep, vol_target=vol_target,
-                  min_prob=p.min_prob, mandate=p.get("mandate", "absolute") or "absolute")
+                  min_prob=p.min_prob, mandate=p.get("mandate", "absolute") or "absolute",
+                  prob_centering=p.get("prob_centering", "none") or "none")
         kw.update(over)
         return cls(**kw)
 
@@ -117,6 +119,16 @@ def target_weights(cands: pd.DataFrame, prev: pd.Series, prm: SizingParams, mkt_
         return pd.Series(dtype=float), diag
     if prm.mandate not in ("absolute", "relative"):
         raise ValueError("portfolio.mandate must be 'absolute' or 'relative'")
+    if prm.prob_centering == "cross_section":
+        # The model estimates P(stock beats the index). Its cross-sectional mean moves with market
+        # breadth (in a narrow, mega-cap-led market most stocks lag the index), and under the
+        # absolute mandate the alternative to a stock is cash, not the index. Remove the month's base
+        # rate so sizing reflects each stock's edge over its peers; the ranking is unchanged.
+        cands = cands.copy()
+        cands["prob"] = (cands["prob"] - cands["prob"].mean() + 0.5).clip(0.0, 1.0)
+        diag["prob_mean_removed"] = float(cands["prob"].mean())
+    elif prm.prob_centering != "none":
+        raise ValueError("portfolio.prob_centering must be 'none' or 'cross_section'")
     names = select(cands, prev, prm)
     c = cands.loc[names]
     ph = haircut_prob(c["prob"], prm.keep)

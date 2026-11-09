@@ -180,6 +180,8 @@ portfolio:
   min_prob: 0.5               # only hold names with haircut probability above this
   min_position: 0.0           # live recommendations only: drop positions below this weight (0 = off)
   score_smoothing: 0.0        # weight on last month's smoothed prediction (0 = off); damps turnover
+  prob_centering: none        # none | cross_section: size on the edge over peers, not over the index
+                              # (none can go to cash when most stocks lag a narrow index; see docs/algo_research_v4)
   mandate: absolute           # absolute: Kelly caps + vol target (fits the drawdown tolerance)
                               # relative: fully invested, no vol target / Kelly caps (index-like drawdowns!)
   regime_filter:

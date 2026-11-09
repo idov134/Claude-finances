@@ -174,3 +174,21 @@ def test_split_adjusted_shares_matches_split_adjusted_prices():
     fresh = pd.Series([4.44e9, 17.6e9], index=pd.to_datetime(["2020-06-30", "2020-09-15"]))
     assert split_adjusted_shares(fresh, splits).iloc[1] == 17.6e9   # a genuine post-split count is kept
     assert split_adjusted_shares(raw, None).equals(raw)
+
+
+def test_prob_centering_prevents_cash_collapse():
+    rng = np.random.default_rng(3)
+    n = 80
+    c = pd.DataFrame({"prob": rng.uniform(0.40, 0.47, n), "score": rng.standard_normal(n),     # all < 0.5
+                      "mcap": np.exp(rng.normal(23, 1, n)), "sector": rng.choice(list("ABCDE"), n),
+                      "idio_vol": rng.uniform(0.15, 0.4, n), "beta": rng.uniform(0.7, 1.3, n)},
+                     index=[f"T{i}" for i in range(n)])
+    c["score"] = c["prob"]
+    w0, _ = target_weights(c, pd.Series(dtype=float), SizingParams(top_n=40, vol_target=0.5), 0.2)
+    w1, _ = target_weights(c, pd.Series(dtype=float), SizingParams(top_n=40, vol_target=0.5,
+                                                                   prob_centering="cross_section"), 0.2)
+    assert w0.sum() == 0                     # base-rate collapse: nothing passes P(beat index) > 0.5
+    assert w1.sum() > 0.3                    # centred: the best names relative to peers are held
+    assert set(w1.index) <= set(c.sort_values("score").index[-40:])   # ranking unchanged
+    with pytest.raises(ValueError):
+        target_weights(c, pd.Series(dtype=float), SizingParams(prob_centering="bogus"), 0.2)

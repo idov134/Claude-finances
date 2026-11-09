@@ -64,13 +64,13 @@ def log(msg: str) -> None:
 
 
 # --------------------------------------------------------------------------- worlds
-def world(cfg, seed: int, interaction: float = 0.0):
+def world(cfg, seed: int, interaction: float = 0.0, breadth: float = 0.0):
     s = cfg.data.synthetic
     full = synthetic.generate(start=cfg.data.start, end=cfg.data.end, seed=seed, n_initial=s.n_initial,
                               ipo_per_year=s.ipo_per_year, annual_delist_prob=s.annual_delist_prob,
                               alpha_scale=s.alpha_scale, post_2005_decay=s.post_2005_decay,
                               news_per_month=s.news_per_month, timezone=cfg.market.timezone,
-                              interaction=interaction)
+                              interaction=interaction, breadth=breadth)
     data = full.truncate(RESEARCH_END)
     assert_research_data(data, RESEARCH_END + pd.Timedelta(days=1))
     return data
