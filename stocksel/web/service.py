@@ -156,6 +156,8 @@ class MarketService:
         if self.feed_name == "synthetic":
             self._alert("simulation", "Synthetic replay only. Prices and research signals are historical simulations; the used holdout is excluded.")
         self._alert("news", "Daily news trading is disabled: the documented net-cost validation failed. No live news stream is connected.", "info")
+        if meta.get("base_rate_warning"):
+            self._alert("base_rate", meta["base_rate_warning"], "warning")
 
     def _read_portfolio(self):
         from ..live.paper import PaperLedger

@@ -118,6 +118,15 @@ def recommend(cfg, asof: str | None = None, bundle=None, prev_weights: pd.Series
             "horizon_months": h,
         })
     out = pd.DataFrame(rows)
+    # Base-rate diagnostic: under prob_centering "none" a narrow, mega-cap-led market can push every
+    # haircut probability of beating the index below min_prob -> cash for reasons of breadth, not risk.
+    share_ok = float((haircut_prob(cand["prob"], keep) > prm.min_prob).mean()) if len(cand) else 0.0
+    base_rate_warning = None
+    if prm.prob_centering == "none" and prm.mandate == "absolute" and share_ok < 0.05:
+        base_rate_warning = (f"Only {share_ok:.0%} of stocks have P(beat index) above the threshold: the portfolio is "
+                             "in cash because most stocks are expected to lag a narrow index, not because of risk. "
+                             "See portfolio.prob_centering (docs/algo_research_v4).")
     meta = {"asof": str(asof_d.date()), "n_candidates": len(cand), "gross_exposure": float(w.sum()),
+            "share_above_min_prob": share_ok, "base_rate_warning": base_rate_warning,
             "cash_pct": float(1 - w.sum()), "diag": diag, "members": spec["members"], "system_validated": validated}
     return out, meta
