@@ -6,7 +6,7 @@ long-short tests). Models learn their own weights.
 from __future__ import annotations
 
 EXPECTED_SIGN = {
-    "mom_12_1": +1, "mom_6_1": +1, "rev_1m": -1, "illiq": +1, "vol_252": -1, "idio_vol": -1,
+    "mom_12_1": +1, "mom_6_1": +1, "rmom_12_1": +1, "rmom_6_1": +1, "rev_1m": -1, "illiq": +1, "vol_252": -1, "idio_vol": -1,
     "size": -1, "value_bm": +1, "value_ep": +1, "quality_gpa": +1, "quality_roe": +1,
     "sue": +1, "pead": +1, "revisions": +1, "news_sent": +1,
     "regime_trend": +1, "regime_vol": -1, "regime_vix": -1,

@@ -134,6 +134,65 @@ class XGBModel(BaseModel):
         return self.m.get_booster().predict(xgb.DMatrix(X), pred_contribs=True)[:, :-1]
 
 
+class TunedLGBMModel(BaseModel):
+    """LightGBM with hyper-parameters chosen per training window by inner purged K-fold log-loss.
+
+    Only the training window is used for the choice (nested validation); the test months of the
+    outer walk-forward never influence it. Every grid point is an inner fit, not a reported trial.
+    """
+    name, kind = "lgbm_tuned", "tree"
+
+    def __init__(self, seed=0, grid=None, fixed=None, inner_folds=3):
+        self.seed = seed
+        self.grid = grid or {"num_leaves": [7, 15, 31], "min_child_samples": [200, 800]}
+        self.fixed = dict(fixed or {})
+        self.inner_folds = int(inner_folds)
+        self._t0 = self._t1 = None
+        self.best_params_ = None
+        self.m = None
+
+    def set_time_index(self, start, end):
+        self._t0, self._t1 = np.asarray(start), np.asarray(end)
+
+    def _make(self, **params):
+        import lightgbm as lgb
+        p = dict(self.fixed)
+        p.update(params)
+        return lgb.LGBMClassifier(random_state=self.seed, verbose=-1, n_jobs=1, subsample_freq=1, **p)
+
+    def fit(self, X, y, y_reg=None, w=None):
+        import itertools
+
+        import pandas as pd
+        from sklearn.metrics import log_loss
+
+        from ..validation.splits import PurgedKFold
+        keys = list(self.grid)
+        combos = [dict(zip(keys, v)) for v in itertools.product(*self.grid.values())]
+        if self._t0 is not None and len(combos) > 1:
+            cv = PurgedKFold(self.inner_folds, embargo_pct=0.01)
+            scores = {i: [] for i in range(len(combos))}
+            for tr, te in cv.split(pd.Series(self._t0), pd.Series(self._t1)):
+                if len(tr) < 200 or len(np.unique(y[te])) < 2:
+                    continue
+                for i, c in enumerate(combos):
+                    m = self._make(**c).fit(X[tr], y[tr], sample_weight=None if w is None else w[tr])
+                    scores[i].append(log_loss(y[te], np.clip(m.predict_proba(X[te])[:, 1], 1e-6, 1 - 1e-6)))
+            mean = {i: np.mean(v) for i, v in scores.items() if v}
+            best = combos[min(mean, key=mean.get)] if mean else combos[0]
+        else:
+            best = combos[0]
+        self.best_params_ = best
+        self.m = self._make(**best).fit(X, y, sample_weight=w)
+        return self
+
+    def raw_logit(self, X):
+        return self.m.predict(X, raw_score=True)
+
+    def contributions(self, X):
+        return self.m.predict(X, pred_contrib=True)[:, :-1]
+
+
 class MLPModel(BaseModel):
     name, kind = "mlp", "nn"
 
@@ -169,7 +228,7 @@ class MLPModel(BaseModel):
 
 
 REGISTRY = {"logit": LogitModel, "enet": EnetModel, "ridge": RidgeRankModel, "lgbm": LGBMModel,
-            "mlp": MLPModel, "xgb": XGBModel}
+            "lgbm_tuned": TunedLGBMModel, "mlp": MLPModel, "xgb": XGBModel}
 
 
 def make_model(name: str, params: dict | None = None, seed: int = 0) -> BaseModel:
@@ -180,4 +239,4 @@ def make_model(name: str, params: dict | None = None, seed: int = 0) -> BaseMode
 
 
 def is_complex(name: str) -> bool:
-    return name in {"lgbm", "mlp", "xgb"}
+    return name in {"lgbm", "lgbm_tuned", "mlp", "xgb"}

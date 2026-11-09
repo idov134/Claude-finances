@@ -14,6 +14,7 @@ from .news import daily_sentiment, make_scorer, monthly_news_feature, news_weigh
 from .normalize import cross_sectional
 from .price import price_features
 from .regime import regime_features, regime_frame
+from .residual import residual_momentum
 from .registry import TIME_SERIES_FEATURES
 
 
@@ -47,6 +48,7 @@ def build_features(bundle: DataBundle, cfg, scorer=None, dates: Optional[pd.Date
     pf = price_features(bundle, dates)
     for k in ("mom_12_1", "mom_6_1", "rev_1m", "vol_252", "idio_vol", "illiq", "size"):
         raw[k] = pf[k]
+    raw.update(residual_momentum(bundle, dates))
     raw.update(fundamental_features(bundle, cfg, dates))
     reg = regime_features(bundle, dates)
     raw.update(reg)
@@ -64,14 +66,20 @@ def build_features(bundle: DataBundle, cfg, scorer=None, dates: Optional[pd.Date
         raw["news_sent"] = pd.DataFrame(np.nan, index=dates, columns=bundle.tickers)
 
     disabled = set(cfg.features.get("disabled", []) or [])
+    neutral = cfg.features.get("neutralize", "none") or "none"
+    if neutral not in ("none", "sector"):
+        raise ValueError("features.neutralize must be 'none' or 'sector'")
+    groups = bundle.sectors if neutral == "sector" else None
     norm = {}
     for name, df in raw.items():
         if name in disabled:
             continue
         if name in TIME_SERIES_FEATURES:
             norm[name] = df.where(universe)
-        else:
+        elif name == "size":   # size is a risk control, not a peer-relative signal
             norm[name] = cross_sectional(df, universe, cfg.features.normalize, cfg.features.winsor_pct)
+        else:
+            norm[name] = cross_sectional(df, universe, cfg.features.normalize, cfg.features.winsor_pct, groups=groups)
     X = to_long(norm, universe).fillna(0.0)
 
     aux = {"atr": pf["atr"], "close": bundle.close.loc[dates], "mcap": bundle.market_cap.loc[dates],

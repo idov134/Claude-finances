@@ -59,6 +59,20 @@ def recommend(cfg, asof: str | None = None, bundle=None, prev_weights: pd.Series
     P = np.column_stack([p["prob"] for p in preds])
     E = np.column_stack([p["er"] for p in preds])
     cand = pd.DataFrame({"prob": P.mean(1), "prob_std": P.std(1), "er": E.mean(1)}, index=Xn.index.get_level_values(1))
+    smooth = float(cfg.portfolio.get("score_smoothing", 0.0) or 0.0)
+    if smooth and len(panel.dates) > 1:
+        # Same exponential smoothing as the research backtest: blend with last month's prediction
+        # (scored by the same fitted members; names new this month keep their raw prediction).
+        prev_d = panel.dates[-2]
+        Xp = X[d == prev_d]
+        if len(Xp):
+            pp = [m.predict(Xp.to_numpy()) for m in members]
+            prev = pd.DataFrame({"prob": np.column_stack([q["prob"] for q in pp]).mean(1),
+                                 "er": np.column_stack([q["er"] for q in pp]).mean(1)},
+                                index=Xp.index.get_level_values(1))
+            common = cand.index.intersection(prev.index)
+            for col in ("prob", "er"):
+                cand.loc[common, col] = (1 - smooth) * cand.loc[common, col] + smooth * prev.loc[common, col]
     cand["score"] = cand["prob"]
     a = panel.aux
     cand["mcap"] = a["mcap"].loc[last].reindex(cand.index)

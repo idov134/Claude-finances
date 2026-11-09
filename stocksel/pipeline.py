@@ -20,7 +20,7 @@ from .features.registry import EXPECTED_SIGN, haircut_factor
 from .models.ensemble import ensemble_predictions, gate_decisions
 from .models.explain import ensemble_contributions, mean_abs_importance
 from .models.labels import forward_returns, label_panel
-from .models.train import model_view, walk_forward
+from .models.train import model_view, smooth_predictions, walk_forward
 from .portfolio.sizing import SizingParams
 from .validation import decay, sanity, sensitivity
 from .validation.cpcv import cpcv_path_predictions
@@ -93,13 +93,14 @@ def run_research(cfg: Config, bundle=None, quick: bool = False) -> dict:
             X = panel.features(feats)
             log(f"walk-forward h={h} features={fs} ({len(feats)}) models={cands}")
             wf = walk_forward(X, L, cands, cfg_h)
-            views = {m: model_view(wf.preds, m) for m in cands}
+            smooth = float(cfg.portfolio.get("score_smoothing", 0.0) or 0.0)
+            views = {m: smooth_predictions(model_view(wf.preds, m), smooth) for m in cands}
             nets = {}
             cls = {}
             for m in cands + ["ensemble"]:
                 if m == "ensemble":
                     dec = gate_decisions(nets, labels.exit, wf.schedule, cfg)
-                    views["ensemble"] = ensemble_predictions(wf.preds, dec, cands)
+                    views["ensemble"] = smooth_predictions(ensemble_predictions(wf.preds, dec, cands), smooth)
                     store[(h, fs)] = {"wf": wf, "labels": labels, "L": L, "X": X, "views": views,
                                       "decisions": dec, "keep": keep}
                 v = views[m]
@@ -324,6 +325,7 @@ def run_holdout(cfg: Config, bundle=None, force: bool = False) -> dict:
     views = [model_view(wf.preds, m) for m in spec["members"]]
     preds = pd.DataFrame({"prob": np.mean([v["prob"] for v in views], 0), "score": np.mean([v["score"] for v in views], 0),
                           "er": np.mean([v["er"] for v in views], 0)}, index=wf.preds.index)
+    preds = smooth_predictions(preds, float(cfg.portfolio.get("score_smoothing", 0.0) or 0.0))
     preds = preds[preds.index.get_level_values(0) >= hstart]
     prm = SizingParams.from_cfg(cfg, spec["keep"], spec["vol_target"])
     bt = monthly_backtest(preds, panel, labels, full, cfg, prm, regime_filter=cfg.portfolio.regime_filter.enabled)

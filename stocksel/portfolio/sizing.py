@@ -37,6 +37,7 @@ class SizingParams:
     vol_target: float = 0.10
     min_prob: float = 0.5
     regime_scale: float = 1.0          # < 1 in risk-off when the regime filter is on
+    mandate: str = "absolute"          # absolute: Kelly caps + vol target | relative: fully invested
 
     @classmethod
     def from_cfg(cls, cfg, keep: float, vol_target: float, **over):
@@ -44,7 +45,7 @@ class SizingParams:
         kw = dict(top_n=p.top_n, buffer=p.buffer, exit_rank_mult=p.exit_rank_mult, weighting=p.weighting,
                   max_position=p.max_position, max_sector=p.max_sector, max_gross=p.max_gross,
                   kelly_fraction=min(0.25, p.kelly_fraction), keep=keep, vol_target=vol_target,
-                  min_prob=p.min_prob)
+                  min_prob=p.min_prob, mandate=p.get("mandate", "absolute") or "absolute")
         kw.update(over)
         return cls(**kw)
 
@@ -65,8 +66,9 @@ def select(cands: pd.DataFrame, prev: pd.Series, prm: SizingParams) -> pd.Index:
     if prm.buffer and prev is not None and len(prev):
         held = cands.index.isin(prev[prev > 0].index)
         chosen |= held & (rank <= prm.top_n * prm.exit_rank_mult)
-    ph = haircut_prob(cands["prob"], prm.keep)
-    chosen &= ph > prm.min_prob
+    if prm.mandate != "relative":   # the relative mandate ranks; it does not wait for an absolute edge
+        ph = haircut_prob(cands["prob"], prm.keep)
+        chosen &= ph > prm.min_prob
     return cands.index[chosen]
 
 
@@ -113,10 +115,16 @@ def target_weights(cands: pd.DataFrame, prev: pd.Series, prm: SizingParams, mkt_
     diag = {"n_candidates": len(cands)}
     if len(cands) == 0:
         return pd.Series(dtype=float), diag
+    if prm.mandate not in ("absolute", "relative"):
+        raise ValueError("portfolio.mandate must be 'absolute' or 'relative'")
     names = select(cands, prev, prm)
     c = cands.loc[names]
     ph = haircut_prob(c["prob"], prm.keep)
     f = pd.Series(kelly_cap(ph, c["idio_vol"].fillna(c["idio_vol"].median()), prm.kelly_fraction), index=c.index)
+    if prm.mandate == "relative":
+        # Benchmark-relative mandate: fully invested in the selected names; Kelly does not cap
+        # weights and there is no absolute volatility target (drawdowns then resemble the index's).
+        f = pd.Series(np.inf, index=c.index)
     c, f = c[f > 0], f[f > 0]
     diag["n_selected"] = len(c)
     if len(c) == 0:
@@ -135,7 +143,7 @@ def target_weights(cands: pd.DataFrame, prev: pd.Series, prm: SizingParams, mkt_
     diag["kelly_binding"] = int((np.isclose(w, f) & (f < pos_cap)).sum())
     diag["gross_pre_vol"] = float(w.sum())
     vol = portfolio_vol(w, c["beta"], c["idio_vol"], mkt_vol_ann)
-    scale = min(1.0, prm.vol_target / vol) if vol > 0 else 1.0
+    scale = min(1.0, prm.vol_target / vol) if vol > 0 and prm.mandate != "relative" else 1.0
     scale *= prm.regime_scale
     w = w * scale
     diag.update(est_vol=vol, vol_scale=scale, gross=float(w.sum()))

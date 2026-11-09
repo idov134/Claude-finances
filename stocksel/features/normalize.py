@@ -5,12 +5,38 @@ import numpy as np
 import pandas as pd
 
 
+def group_rank(x: pd.DataFrame, groups: pd.Series, min_group: int = 5) -> pd.DataFrame:
+    """Per-date rank within each group (e.g. sector), scaled to [-0.5, 0.5].
+
+    Groups with fewer than ``min_group`` valid names on a date fall back to the all-name rank,
+    so a thin sector cannot produce extreme scores from two or three stocks.
+    """
+    g = groups.reindex(x.columns).fillna("__none__")
+    out = pd.DataFrame(np.nan, index=x.index, columns=x.columns)
+    r_all = x.rank(axis=1)
+    n_all = x.notna().sum(axis=1)
+    glob = r_all.sub(1.0).div((n_all - 1).replace(0, np.nan), axis=0) - 0.5
+    for key in pd.unique(g):
+        cols = g.index[g == key]
+        sub = x[cols]
+        n = sub.notna().sum(axis=1)
+        rk = sub.rank(axis=1).sub(1.0).div((n - 1).replace(0, np.nan), axis=0) - 0.5
+        thin = n < min_group
+        rk.loc[thin] = glob.loc[thin, cols]
+        out[cols] = rk
+    return out
+
+
 def cross_sectional(df: pd.DataFrame, mask: pd.DataFrame | None = None, method: str = "rank",
-                    winsor: float = 0.01, fill: float = 0.0) -> pd.DataFrame:
+                    winsor: float = 0.01, fill: float = 0.0, groups: pd.Series | None = None) -> pd.DataFrame:
+    """Normalize each date's cross-section. With ``groups`` (sector labels) and method ``rank``,
+    ranks are taken within each group: the feature then measures standing relative to sector peers."""
     x = df.astype(float)
     if mask is not None:
         x = x.where(mask.reindex_like(x).fillna(False).astype(bool))
-    if method == "rank":
+    if method == "rank" and groups is not None:
+        out = group_rank(x, groups)
+    elif method == "rank":
         r = x.rank(axis=1)
         n = x.notna().sum(axis=1)
         out = r.sub(1.0).div((n - 1).replace(0, np.nan), axis=0) - 0.5   # spans [-0.5, 0.5] for any N

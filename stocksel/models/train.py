@@ -51,17 +51,32 @@ def fit_calibrated(name: str, X: pd.DataFrame, L: pd.DataFrame, cfg, seed: int =
     cal_start = udates[max(1, int(len(udates) * (1 - frac)))]
     A = (d < cal_start) & (pd.to_datetime(L["t1"]).to_numpy() < cal_start)
     B = d >= cal_start
-    Xa, Xb = X.to_numpy()[A], X.to_numpy()[B]
-    ya, yb = L["y"].to_numpy()[A], L["y"].to_numpy()[B]
     yreg = xs_rank_target(L["excess"]).to_numpy()
+    y_all = L["y"].to_numpy()
+    target = cfg.labels.get("target", "binary")
+    fitA = A
+    if target == "tails" and name != "ridge":
+        # Learn from the informative extremes only: top vs bottom ``tail_frac`` of each month's
+        # excess returns (the middle is mostly noise around zero). Calibration below still uses
+        # every row and the full binary event, so probabilities keep their stated meaning.
+        q = float(cfg.labels.get("tail_frac", 0.3))
+        pct = yreg + 0.5
+        fitA = A & ((pct <= q) | (pct >= 1 - q))
+        y_all = np.where(fitA, (pct >= 1 - q).astype(float), y_all)
+    elif target not in ("binary", "tails"):
+        raise ValueError("labels.target must be 'binary' or 'tails'")
+    Xa, Xb = X.to_numpy()[fitA], X.to_numpy()[B]
+    ya, yb = y_all[fitA], L["y"].to_numpy()[B]
     w = 1.0 / max(1, int(cfg.labels.horizon_months))  # average-uniqueness weight for overlapping labels
     model = make_model(name, cfg.models.params.get(name, {}), seed=seed)
-    model.fit(Xa, ya, yreg[A], np.full(A.sum(), w))
+    if hasattr(model, "set_time_index"):  # inner purged CV needs sample start/end times
+        model.set_time_index(d[fitA], pd.to_datetime(L["t1"]).to_numpy()[fitA])
+    model.fit(Xa, ya, yreg[fitA], np.full(fitA.sum(), w))
     sb = model.raw_logit(Xb)
     cal = Calibrator(cfg.models.calibration).fit(sb, yb)
     er = ExpectedReturnMap().fit(cal.transform(sb), L["excess"].to_numpy()[B])
     return FittedModel(name, model, cal, er, list(X.columns), pd.Timestamp(udates[0]), pd.Timestamp(udates[-1]),
-                       int(A.sum()))
+                       int(fitA.sum()))
 
 
 @dataclass
@@ -104,6 +119,33 @@ def walk_forward(X: pd.DataFrame, L: pd.DataFrame, names: list[str], cfg, keep_m
     preds = pd.concat([r[0] for r in res]).sort_index() if res else pd.DataFrame()
     models = {jobs[k][0]: res[k][1] for k in range(len(jobs))} if keep_models else {}
     return WalkForwardResult(preds=preds, models=models, schedule=[j[0] for j in jobs])
+
+
+def smooth_predictions(preds: pd.DataFrame, weight: float) -> pd.DataFrame:
+    """Exponential smoothing of each stock's prediction across consecutive decision dates.
+
+    s~_t = (1 - weight) * s_t + weight * s~_{t-1}, only when the stock was also scored at the
+    previous decision date; otherwise s~_t = s_t. Uses past predictions only. Damps month-to-month
+    rank churn (fast signals such as reversal/PEAD), trading a little signal for lower turnover.
+    """
+    if not weight:
+        return preds
+    if not 0 < weight < 1:
+        raise ValueError("score smoothing weight must be in [0, 1)")
+    cols = [c for c in ("prob", "score", "er") if c in preds.columns]
+    out = preds.copy()
+    dates = preds.index.get_level_values(0).unique().sort_values()
+    prev = None
+    for d in dates:
+        cur = preds.loc[d, cols]
+        if prev is not None:
+            common = cur.index.intersection(prev.index)
+            cur = cur.copy()
+            cur.loc[common] = (1 - weight) * cur.loc[common] + weight * prev.loc[common]
+        mask = out.index.get_level_values(0) == d
+        out.loc[mask, cols] = cur.reindex(out.index[mask].get_level_values(1)).to_numpy()
+        prev = cur
+    return out
 
 
 def model_view(preds: pd.DataFrame, name: str) -> pd.DataFrame:

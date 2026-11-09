@@ -51,7 +51,9 @@ features:
   sets:                       # feature sets are a trial dimension
     core: [mom_12_1, mom_6_1, illiq, vol_252, idio_vol, size]
     core_comp: [mom_12_1, mom_6_1, illiq, vol_252, idio_vol, size, rev_1m, value_bm, value_ep, quality_gpa, quality_roe, sue, pead, revisions]
-    all: [mom_12_1, mom_6_1, illiq, vol_252, idio_vol, size, rev_1m, value_bm, value_ep, quality_gpa, quality_roe, sue, pead, revisions, news_sent, regime_trend, regime_vol, regime_vix]
+    core_comp_resid: [rmom_12_1, rmom_6_1, illiq, vol_252, idio_vol, size, rev_1m, value_bm, value_ep, quality_gpa, quality_roe, sue, pead, revisions]
+    all: [mom_12_1, mom_6_1, rmom_12_1, rmom_6_1, illiq, vol_252, idio_vol, size, rev_1m, value_bm, value_ep, quality_gpa, quality_roe, sue, pead, revisions, news_sent, regime_trend, regime_vol, regime_vix]
+  neutralize: none            # none | sector  (rank each signal within its sector; size is never neutralized)
   disabled: []                # signals removed by the quarterly decay review
 
 signals:                      # publication metadata -> 50% post-publication haircut
@@ -59,6 +61,8 @@ signals:                      # publication metadata -> 50% post-publication hai
   registry:
     mom_12_1:    {family: momentum,   published: true, year: 1993, ref: "Jegadeesh & Titman (1993)"}
     mom_6_1:     {family: momentum,   published: true, year: 1993, ref: "Jegadeesh & Titman (1993)"}
+    rmom_12_1:   {family: momentum,   published: true, year: 2011, ref: "Blitz, Huij & Martens (2011); Gutierrez & Pirinsky (2007)"}
+    rmom_6_1:    {family: momentum,   published: true, year: 2011, ref: "Blitz, Huij & Martens (2011)"}
     rev_1m:      {family: reversal,   published: true, year: 1990, ref: "Jegadeesh (1990); Lehmann (1990)"}
     illiq:       {family: liquidity,  published: true, year: 2002, ref: "Amihud (2002)"}
     vol_252:     {family: volatility, published: true, year: 2006, ref: "Ang, Hodrick, Xing & Zhang (2006); Baker et al. (2011)"}
@@ -98,6 +102,8 @@ labels:
   horizon_months: 1
   benchmark: index            # index | xs_median
   horizons_to_test: [1, 3]
+  target: binary              # binary: P(excess > 0) | tails: classifiers learn top vs bottom tail_frac only
+  tail_frac: 0.3              # (calibration always uses the full binary event, so probabilities keep their meaning)
 
 models:
   feature_set: core_comp      # pre-registered feature set of the final strategy
@@ -113,6 +119,10 @@ models:
     enet: {C: 0.05, l1_ratio: 0.5}
     lgbm: {n_estimators: 250, learning_rate: 0.03, num_leaves: 15, max_depth: 4, min_child_samples: 300, subsample: 0.7, colsample_bytree: 0.7, reg_lambda: 10.0}
     mlp: {hidden_layer_sizes: [32, 16], alpha: 0.01, max_iter: 40, learning_rate_init: 0.001}
+    lgbm_tuned:               # LightGBM whose grid is chosen by inner purged K-fold on each training window
+      grid: {num_leaves: [7, 15, 31], min_child_samples: [200, 800]}
+      fixed: {n_estimators: 300, learning_rate: 0.03, max_depth: -1, subsample: 0.7, colsample_bytree: 0.7, reg_lambda: 10.0}
+      inner_folds: 3
   gate:
     min_prob_outperform: 0.80 # bootstrap P(complex - baseline > 0) on net OOS returns
     block_size: 6
@@ -169,6 +179,9 @@ portfolio:
   vol_lookback_days: 126
   min_prob: 0.5               # only hold names with haircut probability above this
   min_position: 0.0           # live recommendations only: drop positions below this weight (0 = off)
+  score_smoothing: 0.0        # weight on last month's smoothed prediction (0 = off); damps turnover
+  mandate: absolute           # absolute: Kelly caps + vol target (fits the drawdown tolerance)
+                              # relative: fully invested, no vol target / Kelly caps (index-like drawdowns!)
   regime_filter:
     enabled: false
     scale: 0.5                # exposure multiplier in risk-off regime

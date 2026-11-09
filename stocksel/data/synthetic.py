@@ -90,7 +90,11 @@ def _spread(diff: np.ndarray, rows: np.ndarray, cols: np.ndarray, amount: np.nda
 
 def generate(start="1998-01-01", end="2025-12-31", seed=7, n_initial=420, ipo_per_year=22,
              annual_delist_prob=0.035, alpha_scale=1.0, post_2005_decay=0.6, news_per_month=1.2,
-             timezone="America/New_York", with_news=True, anchor_market=True) -> DataBundle:
+             timezone="America/New_York", with_news=True, anchor_market=True,
+             interaction: float = 0.0) -> DataBundle:
+    """``interaction`` > 0 plants one nonlinear effect for diagnostics only: the momentum premium
+    is scaled by (1 + interaction * tanh(-z_idio_vol)) — strong in low-volatility names, weak in
+    volatile ones (same average). 0 (default) reproduces the standard world exactly."""
     rng = np.random.default_rng(seed)
     dates = pd.bdate_range(start, end)
     T = len(dates)
@@ -148,7 +152,8 @@ def generate(start="1998-01-01", end="2025-12-31", seed=7, n_initial=420, ipo_pe
     q = _ar1(rng, n_m, M, 0.97)            # quality (observable through fundamentals)
     v = _ar1(rng, n_m, M, 0.98)            # value   (observable through B/M, E/P)
     md = _ar1(rng, n_m, M, 0.92)           # momentum drift (observable only through past returns)
-    a_month = 0.025 * q + 0.015 * v + 0.18 * md - 0.02 * z_ivol[None, :]
+    mom_mult = 1.0 + float(interaction) * np.tanh(-z_ivol)[None, :] if interaction else 1.0
+    a_month = 0.025 * q + 0.015 * v + 0.18 * md * mom_mult - 0.02 * z_ivol[None, :]
     # (demeaned with last month's cap weights in the price loop below, so the benchmark
     #  index does not mechanically inherit the anomalies)
 
