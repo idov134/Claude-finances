@@ -35,32 +35,33 @@ def load_history(root: str | Path | None = None, extra: dict | None = None) -> d
     ``extra`` = {"name": (records, returns_frame)} adds an in-progress experiment not yet on disk.
     """
     root = Path(root) if root else REPO
+    # Trial IDs are content hashes of the configuration, so the same ID in two sources is the same
+    # configuration evaluated again (e.g. a re-run of the research command): count it once.
     ids, completed, by_source, frames = set(), set(), {}, []
     sources = [(n, root / f, r, c) for n, f, r, c in SOURCES]
     for name, folder, rfile, conv in sources:
         recs = _records(folder / "registry.jsonl")
         if not recs:
             continue
-        sid = {f"{name}:{r['trial_id']}" for r in recs}
-        ok = {f"{name}:{r['trial_id']}" for r in recs if r.get("status") == "ok"}
+        sid = {r["trial_id"] for r in recs}
+        ok = {r["trial_id"] for r in recs if r.get("status") == "ok"}
+        new_ok = ok - completed
         ids |= sid
         completed |= ok
         by_source[name] = {"distinct": len(sid), "completed": len(ok), "index": conv}
         rp = folder / rfile
         if conv == "decision" and rp.exists():
             df = pd.read_csv(rp, index_col=0, parse_dates=True)
-            df.columns = [f"{name}:{c}" for c in df.columns]
-            frames.append(df[[c for c in df.columns if c in ok]])
+            frames.append(df[[c for c in df.columns if c in new_ok]])
     for name, (recs, df) in (extra or {}).items():
-        sid = {f"{name}:{r['trial_id']}" for r in recs}
-        ok = {f"{name}:{r['trial_id']}" for r in recs if r.get("status") == "ok"}
+        sid = {r["trial_id"] for r in recs}
+        ok = {r["trial_id"] for r in recs if r.get("status") == "ok"}
+        new_ok = ok - completed
         ids |= sid
         completed |= ok
         by_source[name] = {"distinct": len(sid), "completed": len(ok), "index": "decision"}
         if df is not None and len(df.columns):
-            d = df.copy()
-            d.columns = [f"{name}:{c}" for c in d.columns]
-            frames.append(d[[c for c in d.columns if c in ok]])
+            frames.append(df[[c for c in df.columns if c in new_ok]])
     returns = pd.concat(frames, axis=1) if frames else pd.DataFrame()
     return {"n_trials": len(ids), "n_completed": len(completed), "by_source": by_source, "returns": returns}
 

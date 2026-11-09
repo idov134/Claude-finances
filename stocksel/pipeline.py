@@ -24,6 +24,7 @@ from .models.train import model_view, smooth_predictions, walk_forward
 from .portfolio.sizing import SizingParams
 from .validation import decay, sanity, sensitivity
 from .validation.cpcv import cpcv_path_predictions
+from .validation.history import load_history, trial_sharpes
 from .validation.kfold import purged_kfold_scores
 from .validation.holdout import HoldoutLock, assert_research_data, holdout_start
 from .validation.metrics import (classification_metrics, deflated_sharpe, effective_trials, performance_table,
@@ -163,11 +164,23 @@ def run_research(cfg: Config, bundle=None, quick: bool = False) -> dict:
     R = reg.returns()
     ids = {r["trial_id"] for r in reg.records("research") if r["status"] == "ok"}
     R = R[[c for c in R.columns if c in ids]]
-    dsr = deflated_sharpe((bt.net - rf_m).to_numpy(), n_trials, reg.trial_sharpes())
-    pbo_res = pbo(R, int(cfg.validation.pbo.n_blocks), int(cfg.validation.pbo.max_combinations))
+    # On the repository's default synthetic world, every earlier search (original 48 trials, Codex's
+    # experiments, algorithm research v2) used the same data: charge DSR/PBO for all of it.
+    n_trials_run, history_used = n_trials, False
+    srs = reg.trial_sharpes()
+    if data.meta.get("source") == "synthetic" and data.meta.get("seed") == 7:
+        hist = load_history(extra={"this_run": (reg.records("research"), R)})
+        n_trials, history_used = max(n_trials, hist["n_trials"]), True
+        HR = hist["returns"].reindex(R.index) if len(R) else hist["returns"]
+        R = HR.dropna(axis=1, how="all")
+        srs = trial_sharpes(R.dropna(axis=0, how="any")) if len(R) else srs
+    dsr = deflated_sharpe((bt.net - rf_m).to_numpy(), n_trials, srs)
+    pbo_res = pbo(R.dropna(axis=0, how="any") if history_used else R,
+                  int(cfg.validation.pbo.n_blocks), int(cfg.validation.pbo.max_combinations))
     n_eff = effective_trials(R) if R.shape[1] > 1 else 1.0
-    dsr_eff = deflated_sharpe((bt.net - rf_m).to_numpy(), max(2, int(round(n_eff))), reg.trial_sharpes())
-    log(f"DSR={dsr['dsr']:.3f} (N={n_trials}, N_eff={n_eff:.1f}) PBO={pbo_res['pbo']:.2f}")
+    dsr_eff = deflated_sharpe((bt.net - rf_m).to_numpy(), max(2, int(round(n_eff))), srs)
+    log(f"DSR={dsr['dsr']:.3f} (N={n_trials}{' incl. full history' if history_used else ''}, "
+        f"this run {n_trials_run}, N_eff={n_eff:.1f}) PBO={pbo_res['pbo']:.2f}")
 
     # ------------------------------------------------------------ sanity
     bt_fn = lambda v: monthly_backtest(v, panel, labels, data, cfg, prm)
@@ -283,7 +296,7 @@ def run_research(cfg: Config, bundle=None, quick: bool = False) -> dict:
         "monthly": bt.monthly, "monthly_ew": bt_ew.monthly, "monthly_baseline": bt_base.monthly,
         "engine_daily": eng.daily, "engine_trades": eng.trades, "kill_events": eng.kill_events,
         "engine_nk_daily": eng_nk.daily, "dsr": dsr, "dsr_eff": dsr_eff, "pbo": {k: v for k, v in pbo_res.items()},
-        "n_trials": n_trials, "n_eff": n_eff, "trial_returns": R, "trial_records": reg.records("research"),
+        "n_trials": n_trials, "n_trials_this_run": n_trials_run, "history_charged": history_used, "n_eff": n_eff, "trial_returns": R, "trial_records": reg.records("research"),
         "model_cls": {f"{k[1]}|h{k[0]}": v["cls"] for k, v in store.items()},
         "gate": {str(k.date()): v for k, v in S["decisions"].items()}, "sanity": san, "sensitivity": sens,
         "cpcv": cpcv, "kfold": kfold, "decay_table": dtab, "ic": ic, "rolling_ic": decay.rolling_ic(ic), "importance": importance,
