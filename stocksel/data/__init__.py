@@ -18,6 +18,12 @@ def load_bundle(cfg, use_cache: bool = True) -> DataBundle:
     """
     config = cfg.to_dict()
     identity = {"schema_version": 2, "data": config["data"], "market": config["market"]}
+    if cfg.data.provider == "csv":
+        # Local files can be rebuilt in place: key the cache on their size and modification time too,
+        # so corrected data is never served from a stale bundle.
+        folder = Path(cfg.data.csv_dir)
+        identity["files"] = {f.name: [f.stat().st_size, f.stat().st_mtime_ns]
+                             for f in sorted(folder.glob("*.csv"))} if folder.exists() else {}
     key = hashlib.sha256(json.dumps(identity, sort_keys=True, default=str).encode()).hexdigest()[:12]
     cache = Path(cfg.data.cache_dir) / f"bundle_{cfg.data.provider}_{key}.pkl"
     if use_cache and cache.exists():

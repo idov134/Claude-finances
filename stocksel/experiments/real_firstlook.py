@@ -73,18 +73,34 @@ def vs_reference(monthly: pd.DataFrame, ref: pd.DataFrame) -> dict:
     return out
 
 
-def main(config: str = "config.yaml") -> dict:
+def archive_v1() -> None:
+    """Keep the v1 run (built on mis-scaled market caps) for audit before the data-fix re-run."""
+    import shutil
+    dst = OUT / "v1_buggy_market_caps"
+    dst.mkdir(exist_ok=True)
+    for name in ("results.json", "research_report.html", "holdout_report.html", "universe_reference_monthly.csv"):
+        if (OUT / name).exists():
+            shutil.move(str(OUT / name), str(dst / name))
+    reg = REPO / "artifacts" / "real_firstlook" / "trials" / "registry.jsonl"
+    if reg.exists():
+        shutil.copy(reg, dst / "registry.jsonl")
+
+
+def main(config: str = "config.yaml", reopen_after_data_fix: bool = False) -> dict:
     t0 = time.time()
     cfg = load_config(config, OVERRIDES)
     data_dir = REPO / cfg.data.csv_dir
     if not (data_dir / "prices.csv").exists():
         raise SystemExit("build the dataset first: python -m stocksel.data.build_yahoo_csv --out data_csv")
     OUT.mkdir(parents=True, exist_ok=True)
+    if reopen_after_data_fix:
+        archive_v1()
     if (OUT / "results.json").exists():
         raise SystemExit("the real-data first look already ran; its holdout is used")
     res = run_research(cfg, extra_portfolios=EXTRA)
     write_report(res, OUT / "research_report.html")
-    hres = run_holdout(cfg, extra_portfolios=EXTRA)
+    # A re-open is recorded by the lock (n_opens > 1 -> report marked CONTAMINATED).
+    hres = run_holdout(cfg, extra_portfolios=EXTRA, force=reopen_after_data_fix)
     write_report(hres, OUT / "holdout_report.html")
     ref = universe_reference(cfg)
     ref.to_csv(OUT / "universe_reference_monthly.csv")
@@ -97,7 +113,7 @@ def main(config: str = "config.yaml") -> dict:
     cov["share"] = cov["with_prices"] / cov["members"]
     cov["year"] = cov["date"].str[:4]
     out = {
-        "protocol": "real_firstlook_v1", "dataset": info,
+        "protocol": "real_firstlook_v1.1_data_fix" if reopen_after_data_fix else "real_firstlook_v1", "dataset": info,
         "coverage_by_year": cov.groupby("year")["share"].mean().round(3).to_dict(),
         "research": {"window": [str(res["monthly"].index.min().date()), str(res["monthly"].index.max().date())],
                      "default": pick(res["final_metrics"]), "cls": res["cls"],
@@ -124,4 +140,8 @@ def main(config: str = "config.yaml") -> dict:
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    ap = argparse.ArgumentParser(prog="python -m stocksel.experiments.real_firstlook")
+    ap.add_argument("--reopen-after-data-fix", action="store_true",
+                    help="re-run with the frozen strategy after a data-construction bug fix (holdout marked contaminated)")
+    main(reopen_after_data_fix=ap.parse_args().reopen_after_data_fix)

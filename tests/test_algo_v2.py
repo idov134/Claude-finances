@@ -159,3 +159,18 @@ def test_relative_mandate_fully_invested_with_caps():
     assert wa.sum() < 0.8                          # the absolute mandate de-risks
     with pytest.raises(ValueError):
         target_weights(c, pd.Series(dtype=float), SizingParams(mandate="other"), 0.2)
+
+
+# ------------------------------------------------------------------ real-data builder
+def test_split_adjusted_shares_matches_split_adjusted_prices():
+    from stocksel.data.build_yahoo_csv import split_adjusted_shares
+    # AAPL-like: 4.44B shares reported before a 4:1 split on 2020-08-31, 17B after (raw counts)
+    raw = pd.Series([4.6e9, 4.44e9, 4.44e9, 17.0e9],
+                    index=pd.to_datetime(["2019-06-30", "2020-06-30", "2020-09-15", "2020-12-31"]))
+    splits = pd.Series([7.0, 4.0], index=pd.to_datetime(["2014-06-09", "2020-08-31"]))
+    adj = split_adjusted_shares(raw, splits)
+    assert np.allclose(adj.iloc[:3], raw.iloc[:3] * 4)    # pre-split reports (even one lagging the split) x4
+    assert adj.iloc[3] == 17.0e9                           # post-split report already in today's units
+    fresh = pd.Series([4.44e9, 17.6e9], index=pd.to_datetime(["2020-06-30", "2020-09-15"]))
+    assert split_adjusted_shares(fresh, splits).iloc[1] == 17.6e9   # a genuine post-split count is kept
+    assert split_adjusted_shares(raw, None).equals(raw)

@@ -10,8 +10,9 @@ Sources
 Known biases (written into the dataset's `DATASET.md` and flagged by every report):
 * **survivorship**: Yahoo no longer serves most delisted tickers, so many former members that
   failed or were acquired are missing -> backtests are biased upward (an upper bound);
-* market cap = unadjusted close x shares outstanding; Yahoo's share history starts ~2015 and is
-  back-filled before that (approximate size and value weights);
+* market cap = split-adjusted close x share count expressed in today's split units (each report
+  is multiplied by every later split ratio); Yahoo's share history starts ~2015 and is back-filled
+  before that, so buybacks/issuance before 2015 are ignored (approximate size and value weights);
 * sectors are current GICS for current members, "Unknown" for former members;
 * delisting returns unknown -> 0 (merger-like) for names whose prices stop early;
 * no point-in-time fundamentals, earnings, estimates or news -> those signals are unavailable.
@@ -51,18 +52,53 @@ def _download(tickers, start, end, retries=4):
     return pd.DataFrame()
 
 
+def split_adjusted_shares(shares_raw: pd.Series, splits: pd.Series | None) -> pd.Series:
+    """Express every share-count report in today's (post-all-splits) units.
+
+    Yahoo's ``Close`` is split-adjusted, but its share-count history is as reported at the time.
+    A report dated r is multiplied by every split ratio *after r*; forward-filling the adjusted
+    reports then stays consistent with the split-adjusted price even while a report lags a split.
+    """
+    if splits is None or len(splits) == 0:
+        return shares_raw
+    sp = splits[splits > 0].copy()
+    sp.index = pd.to_datetime(sp.index).tz_localize(None).normalize() if getattr(sp.index, "tz", None) \
+        else pd.to_datetime(sp.index).normalize()
+    sp = sp.groupby(level=0).prod().sort_index()
+    after = np.r_[np.cumprod(sp.to_numpy()[::-1])[::-1], 1.0]          # product of ratios from k onward
+    pos = sp.index.searchsorted(shares_raw.index, side="right")        # first split strictly after r
+    adj = shares_raw * after[pos]
+    # Filings lag: a report dated shortly after a split can still carry the pre-split count. In
+    # today's units it then sits one split-ratio below the last pre-split report; scale it up.
+    for when, ratio in sp.items():
+        before = adj[adj.index <= when]
+        if not len(before) or ratio == 1:
+            continue
+        ref = before.iloc[-1]
+        window = (adj.index > when) & (adj.index <= when + pd.Timedelta(days=120))
+        stale = window & (np.abs(adj * ratio / ref - 1) < 0.15)
+        adj[stale] = adj[stale] * ratio
+    return adj
+
+
 def _shares(ticker: str, start: str):
     import yfinance as yf
+    tk = yf.Ticker(ticker)
     try:
-        s = yf.Ticker(ticker).get_shares_full(start=start)
+        s = tk.get_shares_full(start=start)
     except Exception:
         s = None
     if s is None or len(s) == 0:
         return None
+    try:
+        splits = tk.splits
+    except Exception:
+        splits = None
     s = s[~s.index.duplicated(keep="last")].sort_index()
     s.index = pd.to_datetime(s.index).tz_localize(None).normalize()
-    s = s.groupby(level=0).last()
-    # drop spurious prints: values more than 3x away from the rolling median of neighbours
+    s = s.groupby(level=0).last().astype(float)
+    s = split_adjusted_shares(s, splits)
+    # drop spurious prints (after split adjustment, so genuine splits are not mistaken for outliers)
     med = s.rolling(9, center=True, min_periods=1).median()
     s = s[(s / med).between(1 / 3, 3)]
     return s.astype(float)
