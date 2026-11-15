@@ -8,6 +8,7 @@ Expected files in ``cfg.data.csv_dir`` (only prices.csv and benchmark.csv are re
   delistings.csv    ticker,delist_return
   fundamentals.csv  ticker,period_end,publish_date,total_assets,book_equity,gross_profit,net_income,revenue,eps
   earnings.csv      ticker,announce_ts,eps_actual,eps_consensus        (announce_ts in UTC ISO format)
+                    optional period_end: the seasonal-random-walk SUE then compares like quarters only
   estimates.csv     date,ticker,fy1_consensus
   news.csv          ticker,timestamp,headline,body                      (timestamp in UTC ISO format)
   vix.csv           date,vix

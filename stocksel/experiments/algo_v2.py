@@ -130,7 +130,7 @@ class Evaluator:
         Lp = L.reindex(preds.index)
         cls = classification_metrics(preds["prob"], Lp["y"], Lp["excess"], preds.index.get_level_values(0))
         admitted = pd.DataFrame(dec).T
-        return {"monthly": m, "perf": perf, "cls": cls, "features": feats,
+        return {"monthly": m, "perf": perf, "cls": cls, "features": feats, "preds": preds, "labels": L,
                 "gate_admission_share": admitted.mean().to_dict() if len(admitted) else {}}
 
 

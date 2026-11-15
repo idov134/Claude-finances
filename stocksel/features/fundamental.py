@@ -14,8 +14,11 @@ STOCK = ["total_assets", "book_equity"]
 def _ttm(f: pd.DataFrame) -> pd.DataFrame:
     f = f.sort_values(["ticker", "period_end", "publish_date"]).drop_duplicates(["ticker", "period_end"], keep="first")
     g = f.groupby("ticker", sort=False)
+    # four rows are a trailing year only if they are four consecutive quarters (real filings have gaps)
+    span = (f["period_end"] - g["period_end"].shift(3)).dt.days
+    contiguous = span.between(250, 300)
     for col in FLOW:
-        f[col + "_ttm"] = g[col].transform(lambda s: s.rolling(4, min_periods=4).sum())
+        f[col + "_ttm"] = g[col].transform(lambda s: s.rolling(4, min_periods=4).sum()).where(contiguous)
     # A later-period filing may arrive before a delayed earlier quarter. The
     # aggregate cannot be available until every constituent quarter is public.
     # Delay the entire joined row conservatively, including balance-sheet fields,
@@ -23,6 +26,35 @@ def _ttm(f: pd.DataFrame) -> pd.DataFrame:
     publication_dates = [f["publish_date"]] + [g["publish_date"].shift(i) for i in range(1, 4)]
     f["publish_date"] = pd.concat(publication_dates, axis=1).max(axis=1)
     return f
+
+
+def newest_period_only(ev: pd.DataFrame, time_col: str) -> pd.DataFrame:
+    """Keep an event only if, when it became public, it was the most recent fiscal period known.
+
+    Filings also carry comparative figures for older periods. When those are first reported after a
+    newer period, a time join would let the stale period overwrite the newer one. Values are still
+    point-in-time either way; this keeps the signal about the latest quarter. Rows without
+    ``period_end`` pass through unchanged.
+    """
+    if "period_end" not in ev.columns or ev.empty:
+        return ev
+    pe = pd.to_datetime(ev["period_end"])
+    order = ev.assign(_pe=pe).sort_values(["ticker", time_col, "_pe"], kind="stable")
+    newest = order["_pe"] >= order.groupby("ticker")["_pe"].cummax()
+    return order[newest].drop(columns="_pe")
+
+
+def seasonal_surprise(e: pd.DataFrame) -> pd.Series:
+    """Seasonal-random-walk SUE: EPS change vs the same quarter a year earlier, scaled by its own volatility.
+
+    ``e`` is sorted by ticker and announcement time. With a ``period_end`` column the comparison is
+    made only when the row four back is the same fiscal quarter a year earlier (filings have gaps).
+    """
+    d4 = e.groupby("ticker")["eps_actual"].diff(4)
+    if "period_end" in e.columns:
+        pe = pd.to_datetime(e["period_end"])
+        d4 = d4.where((pe - pe.groupby(e["ticker"]).shift(4)).dt.days.between(350, 380))
+    return d4 / d4.groupby(e["ticker"]).transform(lambda s: s.rolling(8, min_periods=4).std())
 
 
 def fundamental_features(bundle: DataBundle, cfg, dates: pd.DatetimeIndex) -> dict[str, pd.DataFrame]:
@@ -34,7 +66,7 @@ def fundamental_features(bundle: DataBundle, cfg, dates: pd.DatetimeIndex) -> di
     px = bundle.close.loc[dates]
 
     if bundle.fundamentals is not None and len(bundle.fundamentals) and bundle.meta.get("pit_fundamentals", False):
-        f = _ttm(bundle.fundamentals.copy())
+        f = newest_period_only(_ttm(bundle.fundamentals.copy()), "publish_date")
         cols = [c + "_ttm" for c in FLOW] + STOCK
         j = asof_wide(f, "publish_date", cols, dates, tick, tz, close_t,
                       lag_days=int(cfg.data.pit_lag_days), return_avail=True)
@@ -56,8 +88,8 @@ def fundamental_features(bundle: DataBundle, cfg, dates: pd.DatetimeIndex) -> di
         e["surprise"] = e["eps_actual"] - e["eps_consensus"]
         if e["eps_consensus"].isna().all():  # seasonal random walk fallback
             e = e.sort_values(["ticker", "announce_ts"])
-            d4 = e.groupby("ticker")["eps_actual"].diff(4)
-            e["surprise"] = d4 / d4.groupby(e["ticker"]).transform(lambda s: s.rolling(8, min_periods=4).std())
+            e["surprise"] = seasonal_surprise(e)
+        e = newest_period_only(e, "announce_ts")
         j = asof_wide(e, "announce_ts", ["surprise"], dates, tick, tz, close_t, return_avail=True)
         dts = pd.Series(decision_ts(dates, close_t), index=dates).astype("datetime64[ns]")
         days = -(j["avail"].astype("datetime64[ns]").sub(dts, axis=0)) / pd.Timedelta(days=1)
