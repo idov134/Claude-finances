@@ -24,6 +24,7 @@
 
 - **מבט ראשון על נתונים אמיתיים** ([תוצאות](docs/real_firstlook/RESULTS.md)): על מחירי S&P 500 אמיתיים (Yahoo, מוטה שורדים) **אין כושר חיזוי** מאותות מחיר בלבד, והמערכת **לא מכה את המדד**. ההרצה חשפה ותיקנה באג שווי שוק, וחשפה "בריחה למזומן" ([v4](docs/algo_research_v4/RESULTS.md); אפשרות `portfolio.prob_centering`, כבויה, עם התראה).
 - **Alpha DSR:** כישרון נמדד אחרי ניכוי החשיפה לשוק. שער המוכנות דורש אותו.
+- **כללים טכניים פשוטים ופילוחים** ([תוצאות](docs/technical_rules/RESULTS.md), [שחזור](docs/technical_replication/RESULTS.md)): 16 כללים (ממוצע 150/200, RSI, בולינגר, MACD, Minervini, עונתיות ועוד) נבדקו על SPY, QQQ, טכנולוגיה, אנרגיה, מניות גדולות ו-16 מדינות. **אף כלל לא מכה "קנה והחזק".** מסנן מגמה מקטין ירידות בכחצי, במחיר של כ-0.6% בשנה בתשואה.
 - **פונדמנטלים PIT חינמיים מ-SEC** ([תוצאות](docs/real_fundamentals/RESULTS.md)): דוחות 10-Q/10-K, כל נתון כפי שפורסם לראשונה וזמין מיום ההגשה. **גם עם ערך, איכות והפתעות רווח אין כושר חיזוי** על נתונים אמיתיים (AUC 0.485, Alpha DSR 0.03). בדרך תוקנו ארבע בעיות איכות בנתוני SEC, כולל חברות שעברו לישות רישום חדשה.
 
 ```bash
@@ -31,6 +32,9 @@ python -m stocksel.data.build_yahoo_csv --out data_csv      # נתונים אמ�
 python -m stocksel.experiments.real_firstlook               # מבט ראשון (חד-פעמי; ה-holdout כבר נוצל)
 python -m stocksel.data.build_sec_fundamentals --data data_csv   # פונדמנטלים PIT מ-SEC (לא נשמרים בגיט)
 python -m stocksel.experiments.real_fundamentals            # מחקר הפונדמנטלים (חד-פעמי)
+python -m stocksel.data.build_etf_csv --data data_csv          # קרנות סל + סקטורים (לא נשמרים בגיט); --intl לקרנות המדינות
+python -m stocksel.experiments.technical_rules              # כללים טכניים (חד-פעמי)
+python -m stocksel.experiments.technical_replication        # שחזור על 16 מדינות (חד-פעמי)
 python -m stocksel.experiments.algo_v4                      # מחקר v4 (חד-פעמי)
 python -m stocksel.experiments.algo_v2 dev && python -m stocksel.experiments.algo_v2 confirm   # מחקר v2 (חד-פעמי)
 python -m stocksel.experiments.algo_v3                                                        # מחקר v3 (חד-פעמי)

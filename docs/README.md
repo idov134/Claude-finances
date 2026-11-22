@@ -17,6 +17,8 @@
 | חזית המנדטים ואבחון השער | [`algo_research_v3/`](algo_research_v3/) ([פרוטוקול](algo_research_v3/PROTOCOL.md), [תוצאות](algo_research_v3/RESULTS.md)) | Claude |
 | **מבט ראשון על נתונים אמיתיים** (Yahoo, מוטה שורדים): אין כישרון, לא מכה את המדד | [`real_firstlook/`](real_firstlook/) ([פרוטוקול](real_firstlook/PROTOCOL.md), [תוצאות](real_firstlook/RESULTS.md)) | Claude |
 | **נתונים אמיתיים + פונדמנטלים PIT חינמיים מ-SEC**: אין כישרון גם עם פונדמנטלים | [`real_fundamentals/`](real_fundamentals/) ([פרוטוקול](real_fundamentals/PROTOCOL.md), [תוצאות](real_fundamentals/RESULTS.md)) | Claude |
+| **כללים טכניים פשוטים** (ממוצע 150/200, RSI, בולינגר, MACD ועוד) על SPY, QQQ, טכנולוגיה, אנרגיה ומניות גדולות: אף כלל לא מכה "קנה והחזק" | [`technical_rules/`](technical_rules/) ([פרוטוקול](technical_rules/PROTOCOL.md), [תוצאות](technical_rules/RESULTS.md)) | Claude |
+| **שחזור על 16 מדינות:** הממצאים המבטיחים לא שוחזרו; מסנן מגמה מקטין ירידות אבל עולה בתשואה | [`technical_replication/`](technical_replication/) ([פרוטוקול](technical_replication/PROTOCOL.md), [תוצאות](technical_replication/RESULTS.md)) | Claude |
 | תיקון "בריחה למזומן" (מירכוז הסתברויות) | [`algo_research_v4/`](algo_research_v4/) ([פרוטוקול](algo_research_v4/PROTOCOL.md), [תוצאות](algo_research_v4/RESULTS.md)) | Claude |
 | היסטוריית כל הניסיונות (בסיס ל-DSR/PBO) | [`research_history/`](research_history/) | Claude |
 | ניסוי re-entry אחרי kill switch | [`ALGO_REVIEW.md`](ALGO_REVIEW.md), [`reentry_review/`](reentry_review/) | Codex |
@@ -38,4 +40,6 @@
 3. **holdout נפתח פעם אחת.** ה-holdout הסינתטי (2024–2025) נוצל. ה-holdout האמיתי (נוב' 2024–2026) נפתח פעמיים: בפעם השנייה אחרי תיקון באג נתונים, עם אסטרטגיה קפואה, ולכן הוא **מסומן מזוהם**. מחקר הפונדמנטלים מדווח עליו רק כ"תקופה שכבר נצפתה". מחקר אמיתי עתידי צריך חלון חדש, למשל paper trading מהיום והלאה.
 4. **שיפור נכנס לברירת המחדל** רק אם עבר גם בפיתוח וגם באישור על נתונים שלא נראו. עד כה אף שיפור בבחירת מניות לא עבר.
 5. **כישרון נמדד ב-Alpha DSR,** לא רק ב-DSR. Sharpe של תיק long-only נובע ברובו מהחשיפה לשוק.
-6. **שום תוצאה כאן אינה הבטחת רווח.**
+6. **כיול על רעש לפני ההרצה.** קריטריון חדש נבדק קודם על שווקים אקראיים בלי אות, כדי לדעת כמה "תגליות" הוא מייצר במקרה.
+7. **ממצא מבטיח נבדק על שווקים שלא שימשו למציאתו.** כך נפסלו קניית הירידות והסבב בין שווקים.
+8. **שום תוצאה כאן אינה הבטחת רווח.**
