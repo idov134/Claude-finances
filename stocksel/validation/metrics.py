@@ -129,6 +129,31 @@ def deflated_sharpe(r, n_trials: int, trial_sharpes_period: np.ndarray | None = 
             "n_trials": int(n_trials), "var_sr": var_sr}
 
 
+def alpha_tstat(r_ex, b_ex, lags: int = 3, ppy: int = 12) -> dict:
+    """OLS ``r_ex = a + beta * b_ex + e`` with Newey-West (Bartlett) standard errors.
+
+    Both inputs are returns in excess of the risk-free rate. Returns the annualized alpha, beta and
+    the t-statistic of alpha, which is robust to autocorrelation and heteroskedasticity.
+    """
+    r, b = np.asarray(r_ex, float), np.asarray(b_ex, float)
+    m = np.isfinite(r) & np.isfinite(b)
+    r, b = r[m], b[m]
+    n = len(r)
+    if n < 12 or np.var(b) == 0:
+        return {"alpha": np.nan, "beta": np.nan, "t_alpha": np.nan, "n": int(n)}
+    X = np.column_stack([np.ones(n), b])
+    xtx_inv = np.linalg.inv(X.T @ X)
+    coef = xtx_inv @ X.T @ r
+    u = X * (r - X @ coef)[:, None]
+    S = u.T @ u
+    for lag in range(1, lags + 1):
+        g = u[lag:].T @ u[:-lag]
+        S += (1 - lag / (lags + 1)) * (g + g.T)
+    se = np.sqrt(np.diag(xtx_inv @ S @ xtx_inv))
+    return {"alpha": float(coef[0] * ppy), "beta": float(coef[1]),
+            "t_alpha": float(coef[0] / se[0]) if se[0] > 0 else np.nan, "n": int(n)}
+
+
 def alpha_returns(r_ex, b_ex) -> pd.Series:
     """Beta-adjusted (CAPM alpha + residual) returns: r_ex - beta * b_ex, beta estimated on the overlap.
 

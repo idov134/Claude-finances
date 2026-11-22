@@ -1,0 +1,198 @@
+{
+ "101": {
+  "global": {
+   "etf": {
+    "trials": 176,
+    "spearman_disc_conf_alpha_gross": 0.16746423068456967,
+    "spearman_p": 0.02631402658513886,
+    "spearman_net_for_reference": 0.17556020250935503,
+    "t_ge_2_disc": 1,
+    "t_ge_2_conf": 1,
+    "t_ge_2_both": 0,
+    "expected_by_chance_per_half": 4.0,
+    "alpha_positive_disc": 70,
+    "alpha_positive_conf": 62,
+    "edge_confirmed": 0,
+    "risk_pre": 0,
+    "risk_control": 0
+   },
+   "stock": {
+    "trials": 64,
+    "spearman_disc_conf_alpha_gross": 0.05989010989010988,
+    "spearman_p": 0.638283467133168,
+    "spearman_net_for_reference": 0.6087454212454212,
+    "t_ge_2_disc": 0,
+    "t_ge_2_conf": 0,
+    "t_ge_2_both": 0,
+    "expected_by_chance_per_half": 1.5,
+    "alpha_positive_disc": 10,
+    "alpha_positive_conf": 8,
+    "edge_confirmed": 0,
+    "risk_pre": 0,
+    "risk_control": 0
+   }
+  },
+  "edge_confirmed": [],
+  "risk_control": [],
+  "promising_ic": [],
+  "max_dsr": 0.00049443
+ },
+ "202": {
+  "global": {
+   "etf": {
+    "trials": 176,
+    "spearman_disc_conf_alpha_gross": -0.12990378475968206,
+    "spearman_p": 0.08572781816907404,
+    "spearman_net_for_reference": -0.14246240560118012,
+    "t_ge_2_disc": 4,
+    "t_ge_2_conf": 3,
+    "t_ge_2_both": 0,
+    "expected_by_chance_per_half": 4.0,
+    "alpha_positive_disc": 58,
+    "alpha_positive_conf": 88,
+    "edge_confirmed": 0,
+    "risk_pre": 7,
+    "risk_control": 0
+   },
+   "stock": {
+    "trials": 64,
+    "spearman_disc_conf_alpha_gross": 0.32777650561025873,
+    "spearman_p": 0.008193076742293694,
+    "spearman_net_for_reference": 0.6410350354934736,
+    "t_ge_2_disc": 1,
+    "t_ge_2_conf": 1,
+    "t_ge_2_both": 0,
+    "expected_by_chance_per_half": 1.5,
+    "alpha_positive_disc": 6,
+    "alpha_positive_conf": 9,
+    "edge_confirmed": 0,
+    "risk_pre": 0,
+    "risk_control": 0
+   }
+  },
+  "edge_confirmed": [],
+  "risk_control": [],
+  "promising_ic": [],
+  "max_dsr": 0.000691603
+ },
+ "303": {
+  "global": {
+   "etf": {
+    "trials": 176,
+    "spearman_disc_conf_alpha_gross": 0.07423527005730662,
+    "spearman_p": 0.3274928287291525,
+    "spearman_net_for_reference": 0.07773558379032515,
+    "t_ge_2_disc": 4,
+    "t_ge_2_conf": 1,
+    "t_ge_2_both": 0,
+    "expected_by_chance_per_half": 4.0,
+    "alpha_positive_disc": 66,
+    "alpha_positive_conf": 72,
+    "edge_confirmed": 0,
+    "risk_pre": 5,
+    "risk_control": 0
+   },
+   "stock": {
+    "trials": 64,
+    "spearman_disc_conf_alpha_gross": 0.1957641684265293,
+    "spearman_p": 0.12107219650749103,
+    "spearman_net_for_reference": 0.6792902162430726,
+    "t_ge_2_disc": 0,
+    "t_ge_2_conf": 0,
+    "t_ge_2_both": 0,
+    "expected_by_chance_per_half": 1.5,
+    "alpha_positive_disc": 3,
+    "alpha_positive_conf": 6,
+    "edge_confirmed": 0,
+    "risk_pre": 0,
+    "risk_control": 0
+   }
+  },
+  "edge_confirmed": [],
+  "risk_control": [],
+  "promising_ic": [],
+  "max_dsr": 0.000133045
+ },
+ "404": {
+  "global": {
+   "etf": {
+    "trials": 176,
+    "spearman_disc_conf_alpha_gross": 0.09012766894122826,
+    "spearman_p": 0.2342109783354492,
+    "spearman_net_for_reference": 0.07724191063174116,
+    "t_ge_2_disc": 0,
+    "t_ge_2_conf": 4,
+    "t_ge_2_both": 0,
+    "expected_by_chance_per_half": 4.0,
+    "alpha_positive_disc": 60,
+    "alpha_positive_conf": 70,
+    "edge_confirmed": 0,
+    "risk_pre": 2,
+    "risk_control": 0
+   },
+   "stock": {
+    "trials": 64,
+    "spearman_disc_conf_alpha_gross": 0.23099816849816845,
+    "spearman_p": 0.06628561608665295,
+    "spearman_net_for_reference": 0.5058150183150182,
+    "t_ge_2_disc": 0,
+    "t_ge_2_conf": 0,
+    "t_ge_2_both": 0,
+    "expected_by_chance_per_half": 1.5,
+    "alpha_positive_disc": 16,
+    "alpha_positive_conf": 9,
+    "edge_confirmed": 0,
+    "risk_pre": 0,
+    "risk_control": 0
+   }
+  },
+  "edge_confirmed": [],
+  "risk_control": [],
+  "promising_ic": [],
+  "max_dsr": 0.00033963
+ },
+ "505": {
+  "global": {
+   "etf": {
+    "trials": 176,
+    "spearman_disc_conf_alpha_gross": 0.08743477399326273,
+    "spearman_p": 0.24854144816722765,
+    "spearman_net_for_reference": 0.10877165943768026,
+    "t_ge_2_disc": 4,
+    "t_ge_2_conf": 2,
+    "t_ge_2_both": 0,
+    "expected_by_chance_per_half": 4.0,
+    "alpha_positive_disc": 64,
+    "alpha_positive_conf": 57,
+    "edge_confirmed": 0,
+    "risk_pre": 3,
+    "risk_control": 1
+   },
+   "stock": {
+    "trials": 64,
+    "spearman_disc_conf_alpha_gross": -0.03998168078772612,
+    "spearman_p": 0.7537680088742295,
+    "spearman_net_for_reference": 0.6383787497137623,
+    "t_ge_2_disc": 0,
+    "t_ge_2_conf": 0,
+    "t_ge_2_both": 0,
+    "expected_by_chance_per_half": 1.5,
+    "alpha_positive_disc": 7,
+    "alpha_positive_conf": 10,
+    "edge_confirmed": 0,
+    "risk_pre": 0,
+    "risk_control": 0
+   }
+  },
+  "edge_confirmed": [],
+  "risk_control": [
+   {
+    "arm": "etf",
+    "market": "SPY",
+    "rule": "HALLOWEEN"
+   }
+  ],
+  "promising_ic": [],
+  "max_dsr": 0.000881234
+ }
+}
