@@ -206,3 +206,32 @@ def test_technical_study_runs_end_to_end_on_synthetic_markets(tmp_path, monkeypa
     assert T["full_exposure"].between(0, 1).all() and np.isfinite(T["full_alpha"]).all()
     assert set(res["global"]) == {"etf", "stock"} and len(res["cross_sectional_ic"]) == 4 * 6
     assert (tmp_path / "registry.jsonl").exists() and (tmp_path / "returns.csv").exists()
+
+
+def test_replication_helpers_and_smoke(tmp_path, monkeypatch):
+    import stocksel.experiments.technical_replication as rp
+    import stocksel.experiments.technical_rules as tr
+    monkeypatch.setitem(tr.BOOT, "n", 20)
+    # rotation: equal split capped at 25%, cash otherwise
+    idx = pd.bdate_range("2020-01-01", periods=3)
+    pos = pd.DataFrame([[1, 0, 0, 0, 0], [1, 1, 1, 1, 1], [0, 0, 0, 0, 0]], index=idx, columns=list("abcde"), dtype=float)
+    sig, w = rp.rotation(pos, pos.notna(), 0.25)
+    assert w.iloc[0].tolist() == [0.25, 0, 0, 0, 0] and np.allclose(w.iloc[1], 0.2) and w.iloc[2].sum() == 0
+    # Newey-West mean t: a constant positive series with noise is significant, pure noise is not
+    rng = np.random.default_rng(2)
+    assert rp.mean_t(pd.Series(0.01 + rng.normal(0, 0.01, 300)))["t"] > 5
+    assert abs(rp.mean_t(pd.Series(rng.normal(0, 0.01, 300)))["t"]) < 3
+    # end-to-end on random walks
+    didx = pd.bdate_range("1999-01-04", "2014-06-30")
+    cols = rp.INTL[:5]
+    r = rng.normal(0.0002, 0.012, size=(len(didx), len(cols)))
+    ec = pd.DataFrame(100 * np.exp(np.cumsum(r, axis=0)), index=didx, columns=cols)
+    eo = ec.shift(1) * np.exp(rng.normal(0, 0.002, size=ec.shape))
+    eo.iloc[0] = ec.iloc[0]
+    spy = pd.Series(rng.normal(0.0003, 0.01, len(didx)), index=didx)
+    res = rp.run(eo, ec, pd.Series(0.02, index=didx), spy, tmp_path, eo, ec, n_shifts=20)
+    assert set(res["H1_dip_buying"]) >= {"verdict", "BB_MR_TREND", "RSI2"}
+    assert set(res["H2_trend_drawdown"]) == {"SMA200", "GOLDEN", "FABER10"}
+    assert set(res["H3_rotation"]["RSI2"]) == {"10bps", "20bps", "usable"}
+    T = pd.read_csv(tmp_path / "trials.csv")
+    assert len(T) == 5 * len(cols) and T["dd_shift_p"].between(0, 1).all()

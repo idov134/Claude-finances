@@ -25,16 +25,20 @@ from pathlib import Path
 import pandas as pd
 
 ETFS = ["SPY", "QQQ", "XLK", "XLE", "XLF", "XLV", "XLI", "XLY", "XLP", "XLU", "XLB"]
+# iShares MSCI country ETFs listed in March 1996 (replication markets; see docs/technical_replication)
+INTL_ETFS = ["EWA", "EWC", "EWD", "EWG", "EWH", "EWI", "EWJ", "EWK", "EWL", "EWN", "EWO", "EWP", "EWQ", "EWS",
+             "EWU", "EWW"]
 SECTOR_ETFS = ["XLK", "XLE", "XLF", "XLV", "XLI", "XLY", "XLP", "XLU", "XLB"]
 
 
-def download_etfs(start: str = "1998-12-01", end: str | None = None) -> pd.DataFrame:
+def download_etfs(start: str = "1998-12-01", end: str | None = None, tickers: list[str] | None = None) -> pd.DataFrame:
     import yfinance as yf
+    tickers = tickers or ETFS
     end = end or (pd.Timestamp.today().normalize() + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
-    raw = yf.download(ETFS, start=start, end=end, auto_adjust=False, group_by="ticker", progress=False,
+    raw = yf.download(tickers, start=start, end=end, auto_adjust=False, group_by="ticker", progress=False,
                       threads=True)
     rows = []
-    for t in ETFS:
+    for t in tickers:
         df = raw[t].dropna(subset=["Close"])
         adj = (df["Adj Close"] / df["Close"]).astype(float)
         idx = df.index.tz_localize(None) if df.index.tz else df.index
@@ -63,6 +67,16 @@ def yahoo_sectors(tickers: list[str], sleep: float = 0.3, tries: int = 3) -> pd.
     return pd.DataFrame(out)
 
 
+def build_intl(data_dir: Path) -> dict:
+    """Country ETFs for the replication study -> etf_intl_prices.csv."""
+    etf = download_etfs(tickers=INTL_ETFS)
+    etf.to_csv(data_dir / "etf_intl_prices.csv", index=False, date_format="%Y-%m-%d", float_format="%.6g")
+    info = {t: [str(g["date"].min().date()), str(g["date"].max().date()), int(len(g))]
+            for t, g in etf.groupby("ticker")}
+    print(f"[etf] international: {json.dumps(info)}", flush=True)
+    return info
+
+
 def build(data_dir: Path, sectors: bool = True) -> dict:
     etf = download_etfs()
     etf.to_csv(data_dir / "etf_prices.csv", index=False, date_format="%Y-%m-%d", float_format="%.6g")
@@ -83,7 +97,11 @@ def main(argv=None):
     ap = argparse.ArgumentParser(prog="python -m stocksel.data.build_etf_csv")
     ap.add_argument("--data", default="data_csv")
     ap.add_argument("--no-sectors", action="store_true")
+    ap.add_argument("--intl", action="store_true", help="only the country ETFs of the replication study")
     a = ap.parse_args(argv)
+    if a.intl:
+        build_intl(Path(a.data))
+        return
     build(Path(a.data), sectors=not a.no_sectors)
 
 
